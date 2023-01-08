@@ -55,10 +55,10 @@ func UploadFile(next http.HandlerFunc) http.HandlerFunc {
 		tempFile.Write(fileBytes)
 
 		data := tempFile.Name()
-		filepath := data[8:] // split uploads(huruf paling 8 depan akan diambil)
+		// filepath := data[8:] // split uploads(huruf paling 8 depan akan diambil)
 
 		// filename akan ditambahkan kedalam variable ctx. dan r.Context akan di panggil jika ingin upload file
-		ctx := context.WithValue(r.Context(), "dataFile", filepath)
+		ctx := context.WithValue(r.Context(), "dataFile", data)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
