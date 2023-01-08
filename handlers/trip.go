@@ -13,8 +13,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/cloudinary/cloudinary-go/api/uploader"
 	"github.com/cloudinary/cloudinary-go/v2"
+	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
 )
@@ -84,10 +84,6 @@ func (h *handlerTrip) CreateTrip(w http.ResponseWriter, r *http.Request) {
 	filepath := dataContex.(string) // filename akan dipanggil di request
 
 	// cloudinary
-	var ctx = context.Background()
-	var CLOUD_NAME = os.Getenv("CLOUD_NAME")
-	var API_KEY = os.Getenv("API_KEY")
-	var API_SECRET = os.Getenv("API_SECRET")
 
 	//parse data
 	CountryId, _ := strconv.Atoi(r.FormValue("country_id"))
@@ -121,8 +117,13 @@ func (h *handlerTrip) CreateTrip(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var ctx = context.Background()
+	var CLOUD_NAME = os.Getenv("CLOUD_NAME")
+	var API_KEY = os.Getenv("API_KEY")
+	var API_SECRET = os.Getenv("API_SECRET")
+
 	// Add your Cloudinary credentials ...
-	cld, _ := cloudinary.NewFromParams(CLOUD_NAME, API_KEY, API_SECRET)
+	cld, err := cloudinary.NewFromParams(CLOUD_NAME, API_KEY, API_SECRET)
 
 	// Upload file to Cloudinary ...
 	resp, err := cld.Upload.Upload(ctx, filepath, uploader.UploadParams{Folder: "dewetour"})
