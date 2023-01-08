@@ -1,8 +1,11 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
 	dto "project/dto/result"
 	tripsdto "project/dto/trips"
 	"project/models"
@@ -10,6 +13,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/cloudinary/cloudinary-go/api/uploader"
+	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
 )
@@ -37,8 +42,9 @@ func (h *handlerTrip) FindTrips(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// looping image pada trip, lalu trips akan di isi dengan data image dari struct
-	for i, data := range trips {
-		trips[i].Image = path_file_trip + data.Image
+	for i, p := range trips {
+		imagePath := os.Getenv("PATH_FILE") + p.Image
+		trips[i].Image = imagePath
 	}
 
 	w.WriteHeader(http.StatusOK)
@@ -62,7 +68,7 @@ func (h *handlerTrip) GetTrip(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// jika tidak ada error maka image akan di isi dengan path image
-	trip.Image = path_file_trip + trip.Image
+	trip.Image = os.Getenv("PATH_FILE") + trip.Image
 
 	w.WriteHeader(http.StatusOK)
 	response := dto.SuccessResult{Code: http.StatusOK, Data: trip}
@@ -75,7 +81,13 @@ func (h *handlerTrip) CreateTrip(w http.ResponseWriter, r *http.Request) {
 
 	// middleware image
 	dataContex := r.Context().Value("dataFile")
-	filename := dataContex.(string) // filename akan dipanggil di request
+	filepath := dataContex.(string) // filename akan dipanggil di request
+
+	// cloudinary
+	var ctx = context.Background()
+	var CLOUD_NAME = os.Getenv("CLOUD_NAME")
+	var API_KEY = os.Getenv("API_KEY")
+	var API_SECRET = os.Getenv("API_SECRET")
 
 	//parse data
 	CountryId, _ := strconv.Atoi(r.FormValue("country_id"))
@@ -97,7 +109,6 @@ func (h *handlerTrip) CreateTrip(w http.ResponseWriter, r *http.Request) {
 		Price:          price,
 		Quota:          quota,
 		Description:    r.FormValue("description"),
-		Image:          filename,
 	}
 
 	// validasi request jika ada error maka panggil ErrorResult(jika ada request kosong maka error)
@@ -108,6 +119,16 @@ func (h *handlerTrip) CreateTrip(w http.ResponseWriter, r *http.Request) {
 		response := dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()}
 		json.NewEncoder(w).Encode(response)
 		return
+	}
+
+	// Add your Cloudinary credentials ...
+	cld, _ := cloudinary.NewFromParams(CLOUD_NAME, API_KEY, API_SECRET)
+
+	// Upload file to Cloudinary ...
+	resp, err := cld.Upload.Upload(ctx, filepath, uploader.UploadParams{Folder: "dewetour"})
+
+	if err != nil {
+		fmt.Println(err.Error())
 	}
 
 	// parse DateTrip menjadi string
@@ -126,7 +147,7 @@ func (h *handlerTrip) CreateTrip(w http.ResponseWriter, r *http.Request) {
 		Price:          request.Price,
 		Quota:          request.Quota,
 		Description:    request.Description,
-		Image:          request.Image,
+		Image:          resp.SecureURL,
 	}
 
 	// panggil function CreateTrip didalam handlerTrip
