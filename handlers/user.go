@@ -1,14 +1,19 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
 	dto "project/dto/result"
 	usersdto "project/dto/users"
 	"project/models"
 	"project/repositories"
 	"strconv"
 
+	"github.com/cloudinary/cloudinary-go/v2"
+	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
 )
@@ -121,12 +126,29 @@ func (h *handlerUser) UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	// middleware
 	dataContex := r.Context().Value("dataFile")
-	filename := dataContex.(string)
+	filepath := dataContex.(string)
+
+	// cloudinary
+	var ctx = context.Background()
+	var CLOUD_NAME = os.Getenv("CLOUD_NAME")
+	var API_KEY = os.Getenv("API_KEY")
+	var API_SECRET = os.Getenv("API_SECRET")
+
+	// tambah credential..
+	cld, _ := cloudinary.NewFromParams(CLOUD_NAME, API_KEY, API_SECRET)
+
+	// Upload file to Cloudinary ...
+	resp, err := cld.Upload.Upload(ctx, filepath, uploader.UploadParams{Folder: "dewetour"})
+	fmt.Println(resp.SecureURL)
+
+	if err != nil {
+		fmt.Println(err.Error())
+	}
 
 	// request image agar nantinya image dapat diupdate
-	request := usersdto.UpdateUserRequest{
-		Image: filename,
-	}
+	// request := usersdto.UpdateUserRequest{
+	// 	Image: filename,
+	// }
 
 	// name
 	if r.FormValue("name") != "" {
@@ -154,8 +176,8 @@ func (h *handlerUser) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// image
-	if request.Image != "" {
-		user.Image = request.Image
+	if resp.SecureURL != "" {
+		user.Image = resp.SecureURL
 	}
 
 	// panggil function UpdateTrip didalam handlerTrip untuk update semua data trip lalu tampung ke var new trip

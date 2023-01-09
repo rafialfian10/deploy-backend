@@ -83,8 +83,6 @@ func (h *handlerTrip) CreateTrip(w http.ResponseWriter, r *http.Request) {
 	dataContex := r.Context().Value("dataFile")
 	filepath := dataContex.(string) // filename akan dipanggil di request
 
-	// cloudinary
-
 	//parse data
 	CountryId, _ := strconv.Atoi(r.FormValue("country_id"))
 	day, _ := strconv.Atoi(r.FormValue("day"))
@@ -117,6 +115,7 @@ func (h *handlerTrip) CreateTrip(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// cloudinary
 	var ctx = context.Background()
 	var CLOUD_NAME = os.Getenv("CLOUD_NAME")
 	var API_KEY = os.Getenv("API_KEY")
@@ -196,11 +195,27 @@ func (h *handlerTrip) UpdateTrip(w http.ResponseWriter, r *http.Request) {
 
 	// middleware
 	dataContex := r.Context().Value("dataFile")
-	filename := dataContex.(string)
+	filepath := dataContex.(string)
 
 	// request image agar nantinya image dapat diupdate
-	request := tripsdto.UpdateTripRequest{
-		Image: filename,
+	// request := tripsdto.UpdateTripRequest{
+	// 	Image: filepath,
+	// }
+
+	// cloudinary
+	var ctx = context.Background()
+	var CLOUD_NAME = os.Getenv("CLOUD_NAME")
+	var API_KEY = os.Getenv("API_KEY")
+	var API_SECRET = os.Getenv("API_SECRET")
+
+	// tambah credential..
+	cld, err := cloudinary.NewFromParams(CLOUD_NAME, API_KEY, API_SECRET)
+
+	// Upload file to Cloudinary ...
+	resp, err := cld.Upload.Upload(ctx, filepath, uploader.UploadParams{Folder: "dewetour"})
+
+	if err != nil {
+		fmt.Println(err.Error())
 	}
 
 	// title
@@ -266,8 +281,8 @@ func (h *handlerTrip) UpdateTrip(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// image
-	if request.Image != "" {
-		trip.Image = request.Image
+	if resp.SecureURL != "" {
+		trip.Image = resp.SecureURL
 	}
 
 	// panggil function UpdateTrip didalam handlerTrip untuk update semua data trip lalu tampung ke var new trip
