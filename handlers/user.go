@@ -38,9 +38,6 @@ func (h *handlerUser) FindUsers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// looping image pada trip, lalu trips akan di isi dengan data image dari struct
-	for i, data := range users {
-		users[i].Image = path_file_user + data.Image
-	}
 
 	w.WriteHeader(http.StatusOK)
 	response := dto.SuccessResult{Code: http.StatusOK, Data: users}
@@ -61,7 +58,6 @@ func (h *handlerUser) GetUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// jika tidak ada error maka image akan di isi dengan path image
-	user.Image = path_file_user + user.Image
 
 	w.WriteHeader(http.StatusOK)
 	response := dto.SuccessResult{Code: http.StatusOK, Data: user}
