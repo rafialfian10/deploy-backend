@@ -16,8 +16,7 @@ require (
 )
 
 require (
-	github.com/cloudinary/cloudinary-go v1.7.0
-	github.com/cloudinary/cloudinary-go/v2 v2.2.0 // indirect
+	github.com/cloudinary/cloudinary-go/v2 v2.2.0
 	github.com/creasty/defaults v1.6.0 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/go-playground/locales v0.14.0 // indirect
