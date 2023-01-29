@@ -19,8 +19,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-var path_file_trip = "http://localhost:5000/uploads/"
-
 // membuat struct handlerTrip untuk menghandle TripRepository. handlerTrip akan dipanggil ke setiap function
 type handlerTrip struct {
 	TripRepository repositories.TripRepository
@@ -197,24 +195,23 @@ func (h *handlerTrip) UpdateTrip(w http.ResponseWriter, r *http.Request) {
 	dataContex := r.Context().Value("dataFile")
 	filepath := dataContex.(string)
 
-	// request image agar nantinya image dapat diupdate
-	// request := tripsdto.UpdateTripRequest{
-	// 	Image: filepath,
-	// }
-
 	// cloudinary
 	var ctx = context.Background()
 	var CLOUD_NAME = os.Getenv("CLOUD_NAME")
 	var API_KEY = os.Getenv("API_KEY")
 	var API_SECRET = os.Getenv("API_SECRET")
 
-	// tambah credential..
+	// add credential
 	cld, err := cloudinary.NewFromParams(CLOUD_NAME, API_KEY, API_SECRET)
 
-	// Upload file to Cloudinary ...
-	resp, err := cld.Upload.Upload(ctx, filepath, uploader.UploadParams{Folder: "dewetour"})
+	// upload file to Cloudinary
+	resp, err1 := cld.Upload.Upload(ctx, filepath, uploader.UploadParams{Folder: "dewetour"})
 
 	if err != nil {
+		fmt.Println(err.Error())
+	}
+
+	if err1 != nil {
 		fmt.Println(err.Error())
 	}
 

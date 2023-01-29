@@ -14,11 +14,9 @@ import (
 
 	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
-	"github.com/go-playground/validator/v10"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/gorilla/mux"
 )
-
-var path_file_user = "http://localhost:5000/uploads/"
 
 type handlerUser struct {
 	UserRepository repositories.UserRepository
@@ -45,59 +43,27 @@ func (h *handlerUser) FindUsers(w http.ResponseWriter, r *http.Request) {
 func (h *handlerUser) GetUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	id, _ := strconv.Atoi(mux.Vars(r)["id"])
+	userInfo := r.Context().Value("userInfo").(jwt.MapClaims)
+	userId := int(userInfo["id"].(float64))
 
-	user, err := h.UserRepository.GetUser(id)
+	user, err := h.UserRepository.GetUser(userId)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		response := dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()}
+		w.WriteHeader(http.StatusNotFound)
+		response := dto.ErrorResult{
+			Code:    http.StatusBadRequest,
+			Message: err.Error(),
+		}
 		json.NewEncoder(w).Encode(response)
 		return
 	}
 
 	w.WriteHeader(http.StatusOK)
-	response := dto.SuccessResult{Code: http.StatusOK, Data: user}
+	response := dto.SuccessResult{
+		Code: http.StatusOK,
+		Data: convertResponseUser(user),
+	}
 	json.NewEncoder(w).Encode(response)
-}
 
-func (h *handlerUser) CreateUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	request := new(usersdto.CreateUserRequest)
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		response := dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()}
-		json.NewEncoder(w).Encode(response)
-		return
-	}
-
-	validation := validator.New()
-	err := validation.Struct(request)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		response := dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()}
-		json.NewEncoder(w).Encode(response)
-		return
-	}
-
-	user := models.User{
-		Name:     request.Name,
-		Email:    request.Email,
-		Password: request.Password,
-		Phone:    request.Phone,
-		Address:  request.Address,
-	}
-
-	data, err := h.UserRepository.CreateUser(user)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		response := dto.ErrorResult{Code: http.StatusInternalServerError, Message: err.Error()}
-		json.NewEncoder(w).Encode(response)
-	}
-
-	w.WriteHeader(http.StatusOK)
-	response := dto.SuccessResult{Code: http.StatusOK, Data: convertResponseUser(data)}
-	json.NewEncoder(w).Encode(response)
 }
 
 func (h *handlerUser) UpdateUser(w http.ResponseWriter, r *http.Request) {
@@ -105,10 +71,8 @@ func (h *handlerUser) UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	id, _ := strconv.Atoi(mux.Vars(r)["id"])
 
-	// panggil function GetTrip didalam handlerTrip dengan index tertentu
 	user, err := h.UserRepository.GetUser(int(id))
 
-	// jika ada error maka panggil ErrorResult
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		response := dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()}
@@ -126,21 +90,15 @@ func (h *handlerUser) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	var API_KEY = os.Getenv("API_KEY")
 	var API_SECRET = os.Getenv("API_SECRET")
 
-	// tambah credential..
 	cld, _ := cloudinary.NewFromParams(CLOUD_NAME, API_KEY, API_SECRET)
 
 	// Upload file to Cloudinary ...
-	resp, err := cld.Upload.Upload(ctx, filepath, uploader.UploadParams{Folder: "dewetour"})
+	resp, err := cld.Upload.Upload(ctx, filepath, uploader.UploadParams{Folder: "waysbook"})
 	fmt.Println(resp.SecureURL)
 
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-
-	// request image agar nantinya image dapat diupdate
-	// request := usersdto.UpdateUserRequest{
-	// 	Image: filename,
-	// }
 
 	// name
 	if r.FormValue("name") != "" {
@@ -172,10 +130,8 @@ func (h *handlerUser) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		user.Image = resp.SecureURL
 	}
 
-	// panggil function UpdateTrip didalam handlerTrip untuk update semua data trip lalu tampung ke var new trip
 	newUser, err := h.UserRepository.UpdateUser(user)
 
-	// jika ada error maka tampilkan ErrorResult
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		response := dto.ErrorResult{Code: http.StatusInternalServerError, Message: err.Error()}
@@ -183,7 +139,6 @@ func (h *handlerUser) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// panggil function getTrip agar setelah data di create data id akan keluar response
 	newUserResponse, err := h.UserRepository.GetUser(newUser.Id)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -225,13 +180,12 @@ func (h *handlerUser) DeleteUser(w http.ResponseWriter, r *http.Request) {
 
 func convertResponseUser(u models.User) usersdto.UserResponse {
 	return usersdto.UserResponse{
-		Id:       u.Id,
-		Name:     u.Name,
-		Email:    u.Email,
-		Password: u.Password,
-		Gender:   u.Gender,
-		Phone:    u.Phone,
-		Address:  u.Address,
-		Image:    u.Image,
+		Id:      u.Id,
+		Name:    u.Name,
+		Email:   u.Email,
+		Gender:  u.Gender,
+		Phone:   u.Phone,
+		Address: u.Address,
+		Image:   u.Image,
 	}
 }
