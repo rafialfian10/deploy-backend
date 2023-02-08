@@ -92,7 +92,6 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 	counterQty, _ := strconv.Atoi(r.FormValue("qty"))
 	total, _ := strconv.Atoi(r.FormValue("total"))
 	tripId, _ := strconv.Atoi(r.FormValue("trip_id"))
-	// userId, _ := strconv.Atoi(r.FormValue("user_id"))
 
 	request := transactionsdto.CreateTransactionRequest{
 		CounterQty: counterQty,
@@ -127,10 +126,11 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 
 	// request ke model transaction
 	transaction := models.Transaction{
-		Id:         transactionId,
-		CounterQty: request.CounterQty,
-		Total:      request.Total,
-		Status:     request.Status,
+		Id:          transactionId,
+		CounterQty:  request.CounterQty,
+		Total:       request.Total,
+		Status:      request.Status,
+		BookingDate: timeIn("Asia/Jakarta"),
 		// Image:      request.Image,
 		TripId: request.TripId,
 		UserId: request.UserId,
@@ -174,8 +174,63 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 	snapResp, _ := s.CreateTransaction(req)
 	fmt.Println(snapResp)
 
+	// mengupdate token di database
+	transaction, _ = h.TransactionRepository.UpdateTokenTransaction(snapResp.Token, transactionResponse.Id)
+
+	// mengambil data transaction yang baru diupdate
+	transactionUpdated, _ := h.TransactionRepository.GetTransaction(transaction.Id)
+
+	// menyiapkan response
 	w.WriteHeader(http.StatusOK)
-	response := dto.SuccessResult{Code: http.StatusOK, Data: snapResp}
+	response := dto.SuccessResult{
+		Code: http.StatusOK,
+		Data: convertOneTransactionResponse(transactionUpdated),
+	}
+
+	// mengirim response
+	json.NewEncoder(w).Encode(response)
+}
+
+func (h *handlerTransaction) UpdateTransaction(w http.ResponseWriter, r *http.Request) {
+	id, _ := strconv.Atoi(mux.Vars(r)["id_transaction"])
+
+	// mengambil data transaction yang baru ditambahkan
+	transaction, _ := h.TransactionRepository.GetTransaction(id)
+	transactionId := strconv.Itoa(transaction.Id)
+
+	var s = snap.Client{}
+	s.New(os.Getenv("SERVER_KEY"), midtrans.Sandbox)
+
+	req := &snap.Request{
+		TransactionDetails: midtrans.TransactionDetails{
+			OrderID:  transactionId,
+			GrossAmt: int64(transaction.Total),
+		},
+		CreditCard: &snap.CreditCardDetails{
+			Secure: true,
+		},
+		CustomerDetail: &midtrans.CustomerDetails{
+			FName: transaction.User.Name,
+			Email: transaction.User.Email,
+		},
+	}
+
+	snapResp, _ := s.CreateTransaction(req)
+
+	// mengupdate token di database
+	transaction, _ = h.TransactionRepository.UpdateTokenTransaction(snapResp.Token, id)
+
+	// mengambil data transaction yang baru diupdate
+	transactionUpdated, _ := h.TransactionRepository.GetTransaction(id)
+
+	// menyiapkan response
+	w.WriteHeader(http.StatusOK)
+	response := dto.SuccessResult{
+		Code: http.StatusOK,
+		Data: convertOneTransactionResponse(transactionUpdated),
+	}
+
+	// mengirim response
 	json.NewEncoder(w).Encode(response)
 }
 
@@ -282,78 +337,6 @@ func (h *handlerTransaction) Notification(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusOK)
 }
 
-// func (h *handlerTransaction) UpdateTransaction(w http.ResponseWriter, r *http.Request) {
-// 	w.Header().Set("Content-Type", "application/json")
-
-// 	id, _ := strconv.Atoi(mux.Vars(r)["id"])
-// 	transaction, err := h.TransactionRepository.GetTransaction(int(id))
-// 	if err != nil {
-// 		w.WriteHeader(http.StatusBadRequest)
-// 		response := dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()}
-// 		json.NewEncoder(w).Encode(response)
-// 		return
-// 	}
-
-// 	// middleware
-// 	dataContex := r.Context().Value("dataFile")
-// 	filename := dataContex.(string)
-
-// 	// request image agar nantinya image dapat diupdate
-// 	request := transactionsdto.UpdateTransactionRequest{
-// 		Image: filename,
-// 	}
-
-// 	// parse counter qty
-// 	counterQty, _ := strconv.Atoi(r.FormValue("qty"))
-// 	if counterQty != 0 {
-// 		transaction.CounterQty = counterQty
-// 	}
-
-// 	// parse counter total
-// 	total, _ := strconv.Atoi(r.FormValue("total"))
-// 	if total != 0 {
-// 		transaction.Total = total
-// 	}
-
-// 	// status
-// 	if r.FormValue("status") != "" {
-// 		transaction.Status = r.FormValue("status")
-// 	}
-
-// 	// image
-// 	if request.Image != "" {
-// 		transaction.Image = request.Image
-// 	}
-
-// 	// parse trip id
-// 	tripId, _ := strconv.Atoi(r.FormValue("trip_id"))
-// 	if tripId != 0 {
-// 		transaction.TripId = tripId
-// 	}
-
-// 	// panggil Transaction repository dan masukkan transaction ke dalam kedalam function UpdateTransaction
-// 	data, err := h.TransactionRepository.UpdateTransaction(transaction)
-// 	if err != nil {
-// 		w.WriteHeader(http.StatusInternalServerError)
-// 		response := dto.ErrorResult{Code: http.StatusInternalServerError, Message: err.Error()}
-// 		json.NewEncoder(w).Encode(response)
-// 		return
-// 	}
-
-// 	// panggil function getTrip agar setelah data di create data id akan keluar response
-// 	newtransactionResponse, err := h.TransactionRepository.GetTransaction(data.Id)
-// 	if err != nil {
-// 		w.WriteHeader(http.StatusBadRequest)
-// 		response := dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()}
-// 		json.NewEncoder(w).Encode(response)
-// 		return
-// 	}
-
-// 	w.WriteHeader(http.StatusOK)
-// 	response := dto.SuccessResult{Code: http.StatusOK, Data: convertResponseTransaction(newtransactionResponse)}
-// 	json.NewEncoder(w).Encode(response)
-// }
-
 func (h *handlerTransaction) DeleteTransaction(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -385,7 +368,51 @@ func convertResponseTransaction(u models.Transaction) transactionsdto.Transactio
 		CounterQty: u.CounterQty,
 		Total:      u.Total,
 		Status:     u.Status,
+		Token:      u.Token,
 		// Image:      u.Image,
-		TripId: u.TripId,
+		Trip: u.Trip,
+		User: u.User,
 	}
+}
+
+// membuat fungsi konversi data yang akan disajikan sebagai response sesuai requirement
+func convertOneTransactionResponse(t models.Transaction) transactionsdto.TransactionResponse {
+	result := transactionsdto.TransactionResponse{
+		Id:         t.Id,
+		CounterQty: t.CounterQty,
+		Total:      t.Total,
+		Status:     t.Status,
+		Token:      t.Token,
+		User:       t.User,
+		Trip: models.TripResponse{
+			Id:             t.Trip.Id,
+			Title:          t.Trip.Title,
+			Country:        t.Trip.Country,
+			Accomodation:   t.Trip.Accomodation,
+			Transportation: t.Trip.Transportation,
+			Eat:            t.Trip.Eat,
+			Day:            t.Trip.Day,
+			Night:          t.Trip.Night,
+			Price:          t.Trip.Price,
+			Quota:          t.Trip.Quota,
+			Description:    t.Trip.Description,
+		},
+	}
+	result.BookingDate = t.BookingDate.Format("Monday, 2 January 2006")
+	result.Trip.DateTrip = t.Trip.DateTrip
+	result.Trip.Image = t.Trip.Image
+	// for _, img := range t.Trip.Image {
+	// 	result.Trip.Images = append(result.Trip.Images, img.FileName)
+	// }
+
+	return result
+}
+
+// fungsi untuk mendapatkan waktu sesuai zona indonesia
+func timeIn(name string) time.Time {
+	loc, err := time.LoadLocation(name)
+	if err != nil {
+		panic(err)
+	}
+	return time.Now().In(loc)
 }

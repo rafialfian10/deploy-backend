@@ -8,9 +8,10 @@ import (
 
 type TransactionRepository interface {
 	FindTransactions() ([]models.Transaction, error)
-	GetTransaction(ID int) (models.Transaction, error)
+	GetTransaction(Id int) (models.Transaction, error)
 	CreateTransaction(transaction models.Transaction) (models.Transaction, error)
 	UpdateTransaction(status string, Id int) (models.Transaction, error)
+	UpdateTokenTransaction(token string, Id int) (models.Transaction, error)
 	DeleteTransaction(transaction models.Transaction) (models.Transaction, error)
 }
 
@@ -25,33 +26,59 @@ func (r *repository) FindTransactions() ([]models.Transaction, error) {
 	return transaction, err
 }
 
-func (r *repository) GetTransaction(ID int) (models.Transaction, error) {
+func (r *repository) GetTransaction(Id int) (models.Transaction, error) {
 	var transaction models.Transaction
-	err := r.db.Preload("Trip").Preload("Trip.Country").Preload("User").First(&transaction, ID).Error
+	err := r.db.Preload("Trip").Preload("Trip.Country").Preload("User").First(&transaction, Id).Error
 
 	return transaction, err
 }
 
 func (r *repository) CreateTransaction(transaction models.Transaction) (models.Transaction, error) {
-	err := r.db.Preload("Trip").Create(&transaction).Error
+	err := r.db.Create(&transaction).Error
 
 	return transaction, err
 }
 
 func (r *repository) UpdateTransaction(status string, Id int) (models.Transaction, error) {
 	var transaction models.Transaction
-	r.db.Debug().Preload("Trip").First(&transaction, Id)
+	r.db.Preload("Trip.Country").Preload("Trip.Image").Preload("Trip").Preload("User").First(&transaction, "id = ?", Id)
 
+	// If is different & Status is "success" decrement available quota on data trip
 	if status != transaction.Status && status == "success" {
 		var trip models.Trip
-		r.db.First(&trip, transaction.Trip.Id)
+		r.db.First(&trip, transaction.TripId)
 		trip.Quota = trip.Quota - transaction.CounterQty
-		r.db.Save(&trip)
+		r.db.Model(&trip).Updates(trip)
 	}
 
+	// If is different & Status is "reject" decrement available quota on data trip
+	if status != transaction.Status && status == "reject" {
+		var trip models.Trip
+		r.db.First(&trip, transaction.TripId)
+		trip.Quota = trip.Quota + transaction.CounterQty
+		r.db.Model(&trip).Updates(trip)
+	}
+
+	// change transaction status
 	transaction.Status = status
 
-	err := r.db.Save(&transaction).Error
+	// fmt.Println(status)
+	// fmt.Println(transaction.Status)
+	// fmt.Println(transaction.ID)
+
+	err := r.db.Model(&transaction).Updates(transaction).Error
+
+	return transaction, err
+}
+
+func (r *repository) UpdateTokenTransaction(token string, Id int) (models.Transaction, error) {
+	var transaction models.Transaction
+	r.db.Preload("Trip").Preload("Trip.Country").Preload("User").First(&transaction, "id = ?", Id)
+
+	// change transaction token
+	transaction.Token = token
+
+	err := r.db.Model(&transaction).Updates(transaction).Error
 
 	return transaction, err
 }
