@@ -199,7 +199,7 @@ func (h *handlerTransaction) UpdateTransaction(w http.ResponseWriter, r *http.Re
 	transactionId := strconv.Itoa(transaction.Id)
 
 	var s = snap.Client{}
-	s.New(os.Getenv("SERVER_KEY"), midtrans.Sandbox)
+	s.New(os.Getenv("SB-Mid-server-CBYg0a0CWSxQrUrIYbcaHJvM"), midtrans.Sandbox)
 
 	req := &snap.Request{
 		TransactionDetails: midtrans.TransactionDetails{
@@ -222,6 +222,7 @@ func (h *handlerTransaction) UpdateTransaction(w http.ResponseWriter, r *http.Re
 
 	// mengambil data transaction yang baru diupdate
 	transactionUpdated, _ := h.TransactionRepository.GetTransaction(id)
+	fmt.Println("Bro", transactionUpdated)
 
 	// menyiapkan response
 	w.WriteHeader(http.StatusOK)

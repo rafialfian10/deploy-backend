@@ -41,7 +41,7 @@ func (r *repository) CreateTransaction(transaction models.Transaction) (models.T
 
 func (r *repository) UpdateTransaction(status string, Id int) (models.Transaction, error) {
 	var transaction models.Transaction
-	r.db.Preload("Trip.Country").Preload("Trip.Image").Preload("Trip").Preload("User").First(&transaction, "id = ?", Id)
+	r.db.Preload("Trip.Country").Preload("Trip").Preload("User").First(&transaction, "id = ?", Id)
 
 	// If is different & Status is "success" decrement available quota on data trip
 	if status != transaction.Status && status == "success" {
