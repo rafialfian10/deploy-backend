@@ -57,6 +57,35 @@ func (h *handlerTransaction) FindTransactions(w http.ResponseWriter, r *http.Req
 	json.NewEncoder(w).Encode(response)
 }
 
+func (h *handlerTransaction) GetAllTransactionByUser(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	claims := r.Context().Value("userInfo").(jwt.MapClaims)
+	id := int(claims["id"].(float64))
+
+	// mengambil seluruh data transaction
+	transaction, err := h.TransactionRepository.FindTransactionsByUser(id)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		response := dto.ErrorResult{
+			Code:    http.StatusInternalServerError,
+			Message: err.Error(),
+		}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	// menyiapkan response
+	w.WriteHeader(http.StatusOK)
+	response := dto.SuccessResult{
+		Code: http.StatusOK,
+		Data: convertMultipleTransactionResponse(transaction),
+	}
+
+	// mengirim response
+	json.NewEncoder(w).Encode(response)
+}
+
 func (h *handlerTransaction) GetTransaction(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -315,23 +344,23 @@ func (h *handlerTransaction) Notification(w http.ResponseWriter, r *http.Request
 	// kondisi transaksi
 	if transactionStatus == "capture" {
 		if fraudStatus == "challenge" {
-			SendEmail("GAGAL", transaction)
+			SendEmail("Transaction Failed", transaction)
 			h.TransactionRepository.UpdateTransaction("pending", transaction.Id)
 		} else if fraudStatus == "accept" {
-			SendEmail("OK", transaction)
+			SendEmail("Transaction Success", transaction)
 			h.TransactionRepository.UpdateTransaction("success", transaction.Id)
 		}
 	} else if transactionStatus == "settlement" {
-		SendEmail("OK", transaction)
+		SendEmail("Transaction Success", transaction)
 		h.TransactionRepository.UpdateTransaction("success", transaction.Id)
 	} else if transactionStatus == "deny" {
-		SendEmail("GAGAL", transaction)
+		SendEmail("Transaction Failed", transaction)
 		h.TransactionRepository.UpdateTransaction("failed", transaction.Id)
 	} else if transactionStatus == "cancel" || transactionStatus == "expire" {
-		SendEmail("GAGAL", transaction)
+		SendEmail("Transaction Failed", transaction)
 		h.TransactionRepository.UpdateTransaction("failed", transaction.Id)
 	} else if transactionStatus == "pending" {
-		SendEmail("TEST", transaction)
+		SendEmail("Transaction Pending", transaction)
 		h.TransactionRepository.UpdateTransaction("pending", transaction.Id)
 	}
 
@@ -363,6 +392,7 @@ func (h *handlerTransaction) DeleteTransaction(w http.ResponseWriter, r *http.Re
 	json.NewEncoder(w).Encode(response)
 }
 
+// membuat fungsi konversi data yang akan disajikan sebagai response sesuai requirement
 func convertResponseTransaction(u models.Transaction) transactionsdto.TransactionResponse {
 	return transactionsdto.TransactionResponse{
 		Id:         u.Id,
@@ -406,6 +436,42 @@ func convertOneTransactionResponse(t models.Transaction) transactionsdto.Transac
 	// 	result.Trip.Images = append(result.Trip.Images, img.FileName)
 	// }
 
+	return result
+}
+
+// membuat fungsi konversi data yang akan disajikan sebagai response sesuai requirement
+func convertMultipleTransactionResponse(t []models.Transaction) []transactionsdto.TransactionResponse {
+	var result []transactionsdto.TransactionResponse
+
+	for _, t := range t {
+		transaction := transactionsdto.TransactionResponse{
+			Id:         t.Id,
+			CounterQty: t.CounterQty,
+			Total:      t.Total,
+			Status:     t.Status,
+			Token:      t.Token,
+			User:       t.User,
+			Trip: models.TripResponse{
+				Id:             t.Trip.Id,
+				Title:          t.Trip.Title,
+				Country:        t.Trip.Country,
+				Accomodation:   t.Trip.Accomodation,
+				Transportation: t.Trip.Transportation,
+				Eat:            t.Trip.Eat,
+				Day:            t.Trip.Day,
+				Night:          t.Trip.Night,
+				Price:          t.Trip.Price,
+				Quota:          t.Trip.Quota,
+				Description:    t.Trip.Description,
+			},
+		}
+		transaction.BookingDate = t.BookingDate.Format("Monday, 2 January 2006")
+		transaction.Trip.DateTrip = t.Trip.DateTrip
+		// for _, img := range t.Trip.Image {
+		// 	transaction.Trip.Image = append(transaction.Trip.image, img.FileName)
+		// }
+		result = append(result, transaction)
+	}
 	return result
 }
 
