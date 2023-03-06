@@ -18,7 +18,7 @@ func main() {
 	// env
 	errEnv := godotenv.Load()
 	if errEnv != nil {
-		panic("failed to load env file")
+		panic("Failed to load env file")
 	}
 
 	// route
