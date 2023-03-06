@@ -30,7 +30,7 @@ func main() {
 	// run migration
 	database.RunMigration()
 
-	// // route untuk menginisialisasi folder dengan file, image css, js agar dapat diakses kedalam project
+	// route untuk menginisialisasi folder dengan file, image css, js agar dapat diakses kedalam project
 	route.PathPrefix("/uploads").Handler(http.StripPrefix("/uploads/", http.FileServer(http.Dir("./uploads"))))
 
 	// pathPrefix untuk membuat route baru. Subrouter untuk menguji route pada pathPrefix. RouteInit dari (routes/routes)
@@ -44,7 +44,7 @@ func main() {
 	var PORT = os.Getenv("PORT")
 
 	fmt.Println("server running localhost:5000")
-	http.ListenAndServe(":"+PORT, handlers.CORS(AllowedHeaders, AllowedMethods, AllowedOrigins)(route))
+	http.ListenAndServe(":"+PORT, handlers.CORS(AllowedHeaders, AllowedOrigins, AllowedMethods)(route))
 }
 
 // lifecycle: models ---> koneksi mysql ---> database migration ---> repositories ---> dto ---> handlers ---> routers
