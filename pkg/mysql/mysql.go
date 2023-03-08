@@ -15,9 +15,6 @@ func DatabaseInit() {
 	var err error
 
 	// username:root, password:kosong, route:localhost:3306, database name:projects
-	// dsn := "root:xxumSGtJulD69dkIHhZ9@tcp(containers-us-west-134.railway.app:5847)/railway?charset=utf8mb4&parseTime=True&loc=Local"
-	// DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
-
 	// dsn := "root:@tcp(localhost:3306)/dewetour?charset=utf8mb4&parseTime=True&loc=Local"
 	// DB, err = gorm.Open(mysql.Open(dsn), &gorm.Config{})
 

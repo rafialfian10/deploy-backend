@@ -6,9 +6,9 @@ import (
 
 // membuat function RouteInit untuk membuat route ke masing-masing route
 func RouteInit(r *mux.Router) {
-	UserRoutes(r)
-	TripRoutes(r)
 	AuthRoutes(r)
+	UserRoutes(r)
 	CountryRoutes(r)
+	TripRoutes(r)
 	TransactionRoutes(r)
 }
