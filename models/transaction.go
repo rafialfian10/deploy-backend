@@ -3,7 +3,7 @@ package models
 import "time"
 
 type Transaction struct {
-	Id          int       `json:"id" gorm:"primary_key:auto_increment"`
+	Id          int    `json:"id" gorm:"primary_key:auto_increment"`
 	CounterQty  int       `json:"qty" gorm:"type: int"`
 	Total       int       `json:"total" gorm:"type: int"`
 	BookingDate time.Time `json:"booking_date"`

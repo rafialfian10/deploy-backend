@@ -152,14 +152,14 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 			transIdIsMatch = true
 		}
 	}
-
+	date, _ := time.Parse("2006-01-02", r.FormValue("booking_date"))
 	// request ke model transaction
 	transaction := models.Transaction{
 		Id:          transactionId,
 		CounterQty:  request.CounterQty,
 		Total:       request.Total,
 		Status:      request.Status,
-		BookingDate: timeIn("Asia/Jakarta"),
+		BookingDate: date,
 		// Image:      request.Image,
 		TripId: request.TripId,
 		UserId: request.UserId,
