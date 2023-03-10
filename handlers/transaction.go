@@ -125,7 +125,7 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 	request := transactionsdto.CreateTransactionRequest{
 		CounterQty: counterQty,
 		Total:      total,
-		Status:     r.FormValue("status"),
+		Status:     "new",
 		// Image:      filename,
 		TripId: tripId,
 		UserId: userId,
@@ -140,7 +140,7 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Create Unique Transaction Id here ...
+	// buat transaction id unik
 	var transIdIsMatch = false
 	var transactionId int
 
@@ -184,7 +184,7 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 
 	// snap
 	var s = snap.Client{}
-	s.New("SB-Mid-server-CBYg0a0CWSxQrUrIYbcaHJvM", midtrans.Sandbox)
+	s.New(os.Getenv("SERVER_KEY"), midtrans.Sandbox)
 
 	req := &snap.Request{
 		TransactionDetails: midtrans.TransactionDetails{
@@ -197,14 +197,26 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 		CustomerDetail: &midtrans.CustomerDetails{
 			FName: transactionResponse.User.Name,
 			Email: transactionResponse.User.Email,
+			BillAddr: &midtrans.CustomerAddress{
+				FName:   transactionResponse.User.Name,
+				Phone:   transactionResponse.User.Phone,
+				Address: transactionResponse.User.Address,
+				// Postcode: transaction.User.PostCode,
+			},
+			ShipAddr: &midtrans.CustomerAddress{
+				FName:   transactionResponse.User.Name,
+				Phone:   transactionResponse.User.Phone,
+				Address: transactionResponse.User.Address,
+				// Postcode: transaction.User.PostCode,
+			},
 		},
 	}
 
-	snapResp, _ := s.CreateTransaction(req)
+	snapResp, _ := s.CreateTransactionToken(req)
 	fmt.Println(snapResp)
 
 	// mengupdate token di database
-	transaction, _ = h.TransactionRepository.UpdateTokenTransaction(snapResp.Token, transactionResponse.Id)
+	transaction, _ = h.TransactionRepository.UpdateTokenTransaction(snapResp, transactionResponse.Id)
 
 	// mengambil data transaction yang baru diupdate
 	transactionUpdated, _ := h.TransactionRepository.GetTransaction(transaction.Id)
