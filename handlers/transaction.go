@@ -125,7 +125,7 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 	request := transactionsdto.CreateTransactionRequest{
 		CounterQty: counterQty,
 		Total:      total,
-		Status:     r.FormValue("status"),
+		Status:     "new",
 		// Image:      filename,
 		TripId: tripId,
 		UserId: userId,
