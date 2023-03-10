@@ -125,7 +125,7 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 	request := transactionsdto.CreateTransactionRequest{
 		CounterQty: counterQty,
 		Total:      total,
-		Status:     "new",
+		Status:     r.FormValue("status"),
 		// Image:      filename,
 		TripId: tripId,
 		UserId: userId,
@@ -212,11 +212,11 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 		},
 	}
 
-	snapResp, _ := s.CreateTransactionToken(req)
+	snapResp, _ := s.CreateTransaction(req)
 	fmt.Println(snapResp)
 
 	// mengupdate token di database
-	transaction, _ = h.TransactionRepository.UpdateTokenTransaction(snapResp, transactionResponse.Id)
+	transaction, _ = h.TransactionRepository.UpdateTokenTransaction(snapResp.Token, transactionResponse.Id)
 
 	// mengambil data transaction yang baru diupdate
 	transactionUpdated, _ := h.TransactionRepository.GetTransaction(transaction.Id)
@@ -263,7 +263,6 @@ func (h *handlerTransaction) UpdateTransaction(w http.ResponseWriter, r *http.Re
 
 	// mengambil data transaction yang baru diupdate
 	transactionUpdated, _ := h.TransactionRepository.GetTransaction(id)
-	fmt.Println("Bro", transactionUpdated)
 
 	// menyiapkan response
 	w.WriteHeader(http.StatusOK)
