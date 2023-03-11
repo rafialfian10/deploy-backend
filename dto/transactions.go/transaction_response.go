@@ -3,9 +3,9 @@ package transactionsdto
 import "project/models"
 
 type TransactionResponse struct {
-	Id          int                 `json:"id"`
+	Id          string              `json:"id"`
 	CounterQty  int                 `json:"qty"`
-	Token       string              `json:"token"`
+	Token       string              `json:"token" gorm:"type: varchar(255)"`
 	Total       int                 `json:"total"`
 	Status      string              `json:"status"`
 	BookingDate string              `json:"booking_date"`

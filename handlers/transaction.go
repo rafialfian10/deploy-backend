@@ -89,7 +89,7 @@ func (h *handlerTransaction) GetAllTransactionByUser(w http.ResponseWriter, r *h
 func (h *handlerTransaction) GetTransaction(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	id, _ := strconv.Atoi(mux.Vars(r)["id"])
+	id, _ := mux.Vars(r)["id"]
 
 	trans, err := h.TransactionRepository.GetTransaction(id)
 	if err != nil {
@@ -113,24 +113,15 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 	userInfo := r.Context().Value("userInfo").(jwt.MapClaims)
 	userId := int(userInfo["id"].(float64))
 
-	// // middleware upload file
-	// dataContex := r.Context().Value("dataFile")
-	// filename := dataContex.(string)
-
-	//parse data
-	counterQty, _ := strconv.Atoi(r.FormValue("qty"))
-	total, _ := strconv.Atoi(r.FormValue("total"))
-	tripId, _ := strconv.Atoi(r.FormValue("trip_id"))
-
-	request := transactionsdto.CreateTransactionRequest{
-		CounterQty: counterQty,
-		Total:      total,
-		Status:     "new",
-		// Image:      filename,
-		TripId: tripId,
-		UserId: userId,
+	if err := r.ParseForm(); err != nil {
+		panic(err.Error())
 	}
 
+	//mengambil data dari request form
+	var request transactionsdto.CreateTransactionRequest
+	json.NewDecoder(r.Body).Decode(&request)
+
+	// validasi inputan dari request body berdasarkan struct transactionsdto.CreateTransactionRequest
 	validation := validator.New()
 	err := validation.Struct(request)
 	if err != nil {
@@ -140,29 +131,47 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 		return
 	}
 
+	// // middleware upload file
+	// dataContex := r.Context().Value("dataFile")
+	// filename := dataContex.(string)
+
+	//parse data
+	// counterQty, _ := strconv.Atoi(r.FormValue("qty"))
+	// total, _ := strconv.Atoi(r.FormValue("total"))
+	// tripId, _ := strconv.Atoi(r.FormValue("trip_id"))
+
+	// request := transactionsdto.CreateTransactionRequest{
+	// 	CounterQty: counterQty,
+	// 	Total:      total,
+	// 	Status:     "new",
+	// 	// Image:      filename,
+	// 	TripId: tripId,
+	// 	UserId: userId,
+	// }
+
 	// buat transaction id unik
 	var transIdIsMatch = false
-	var transactionId int
+	var transactionId string
 
 	// buat transaksi id dengan time unix
 	for !transIdIsMatch {
-		transactionId = int(time.Now().Unix())
+		transactionId = fmt.Sprintf("TRX-%d-%d-%d", userId, request.TripId, int(time.Now().UnixNano()))
 		transaction, _ := h.TransactionRepository.GetTransaction(transactionId)
-		if transaction.Id == 0 {
+		if transaction.Id == "" {
 			transIdIsMatch = true
 		}
 	}
-	date, _ := time.Parse("2006-01-02", r.FormValue("booking_date"))
+
 	// request ke model transaction
 	transaction := models.Transaction{
 		Id:          transactionId,
 		CounterQty:  request.CounterQty,
 		Total:       request.Total,
 		Status:      request.Status,
-		BookingDate: date,
+		BookingDate: timeIn("Asia/Jakarta"),
+		TripId:      request.TripId,
+		UserId:      request.UserId,
 		// Image:      request.Image,
-		TripId: request.TripId,
-		UserId: request.UserId,
 	}
 
 	// panggil Transaction repository dan masukkan transaction ke dalam kedalam function CreateTransaction
@@ -171,6 +180,7 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 		w.WriteHeader(http.StatusInternalServerError)
 		response := dto.ErrorResult{Code: http.StatusInternalServerError, Message: err.Error()}
 		json.NewEncoder(w).Encode(response)
+		return
 	}
 
 	// panggil function getTrip agar setelah data di create data id akan keluar response
@@ -188,7 +198,7 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 
 	req := &snap.Request{
 		TransactionDetails: midtrans.TransactionDetails{
-			OrderID:  strconv.Itoa(transactionResponse.Id),
+			OrderID:  transactionResponse.Id,
 			GrossAmt: int64(transactionResponse.Total),
 		},
 		CreditCard: &snap.CreditCardDetails{
@@ -233,11 +243,11 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 }
 
 func (h *handlerTransaction) UpdateTransaction(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.Atoi(mux.Vars(r)["id_transaction"])
+	id, _ := mux.Vars(r)["id_transaction"]
 
 	// mengambil data transaction yang baru ditambahkan
 	transaction, _ := h.TransactionRepository.GetTransaction(id)
-	transactionId := strconv.Itoa(transaction.Id)
+	transactionId := transaction.Id
 
 	var s = snap.Client{}
 	s.New(os.Getenv("SB-Mid-server-CBYg0a0CWSxQrUrIYbcaHJvM"), midtrans.Sandbox)
@@ -346,10 +356,8 @@ func (h *handlerTransaction) Notification(w http.ResponseWriter, r *http.Request
 	fraudStatus := notificationPayload["fraud_status"].(string)
 	orderId := notificationPayload["order_id"].(string)
 
-	orderIdConvert, _ := strconv.Atoi(orderId)
-
 	// panggil function get transaction
-	transaction, _ := h.TransactionRepository.GetTransaction(orderIdConvert)
+	transaction, _ := h.TransactionRepository.GetTransaction(orderId)
 	fmt.Println(transactionStatus, fraudStatus, orderId, transaction)
 
 	// kondisi transaksi
