@@ -6,8 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	dto "project/dto/result"
-	tripsdto "project/dto/trips"
+	dto "project/dto"
 	"project/models"
 	"project/repositories"
 	"strconv"
@@ -89,7 +88,7 @@ func (h *handlerTrip) CreateTrip(w http.ResponseWriter, r *http.Request) {
 	quota, _ := strconv.Atoi(r.FormValue("quota"))
 
 	// struct createTripRequest (dto) untuk menampung data
-	request := tripsdto.CreateTripRequest{
+	request := dto.CreateTripRequest{
 		Title:          r.FormValue("title"),
 		CountryId:      CountryId,
 		Accomodation:   r.FormValue("accomodation"),
@@ -120,7 +119,7 @@ func (h *handlerTrip) CreateTrip(w http.ResponseWriter, r *http.Request) {
 	var API_SECRET = os.Getenv("API_SECRET")
 
 	// Add your Cloudinary credentials ...
-	cld, err := cloudinary.NewFromParams(CLOUD_NAME, API_KEY, API_SECRET)
+	cld, _ := cloudinary.NewFromParams(CLOUD_NAME, API_KEY, API_SECRET)
 
 	// Upload file to Cloudinary ...
 	resp, err := cld.Upload.Upload(ctx, filepath, uploader.UploadParams{Folder: "dewetour"})
@@ -343,8 +342,8 @@ func (h *handlerTrip) DeleteTrip(w http.ResponseWriter, r *http.Request) {
 }
 
 // function convert response trip
-func convertResponseTrip(u models.Trip) tripsdto.TripResponse {
-	return tripsdto.TripResponse{
+func convertResponseTrip(u models.Trip) dto.TripResponse {
+	return dto.TripResponse{
 		Id:             u.Id,
 		Title:          u.Title,
 		CountryId:      u.CountryId,

@@ -3,8 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
-	countriesdto "project/dto/countries"
-	dto "project/dto/result"
+	dto "project/dto"
 	"project/models"
 	"project/repositories"
 	"strconv"
@@ -58,7 +57,7 @@ func (h *handlerCountry) GetCountry(w http.ResponseWriter, r *http.Request) {
 func (h *handlerCountry) CreateCountry(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	request := countriesdto.CreateCountryRequest{
+	request := dto.CreateCountryRequest{
 		Name: r.FormValue("name"),
 	}
 
@@ -90,7 +89,7 @@ func (h *handlerCountry) CreateCountry(w http.ResponseWriter, r *http.Request) {
 func (h *handlerCountry) UpdateCountry(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	request := countriesdto.UpdateCountryRequest{
+	request := dto.UpdateCountryRequest{
 		Name: r.FormValue("name"),
 	}
 
@@ -145,8 +144,8 @@ func (h *handlerCountry) DeleteCountry(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func convertResponseCountry(u models.Country) countriesdto.CountryResponse {
-	return countriesdto.CountryResponse{
+func convertResponseCountry(u models.Country) dto.CountryResponse {
+	return dto.CountryResponse{
 		Id:   u.Id,
 		Name: u.Name,
 	}

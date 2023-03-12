@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	authdto "project/dto/auth"
-	dto "project/dto/result"
+	dto "project/dto"
 	"project/models"
 	"project/pkg/bcrypt"
 	jwtToken "project/pkg/jwt"
@@ -32,7 +31,7 @@ func (h *handlerAuth) Register(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	// panggil method new, dan dto RegisterRequest akan digunakan sebagai parameter
-	request := new(authdto.RegisterRequest)
+	request := new(dto.RegisterRequest)
 
 	// err akan decode menjadi data aslinya dan akan di request di body, dan jika ada error maka panggil ErrorResult lalu encode response
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
@@ -90,8 +89,8 @@ func (h *handlerAuth) Register(w http.ResponseWriter, r *http.Request) {
 }
 
 // function convertResponseRegister
-func convertResponseRegister(u models.User) authdto.RegisterResponse {
-	return authdto.RegisterResponse{
+func convertResponseRegister(u models.User) dto.RegisterResponse {
+	return dto.RegisterResponse{
 		Email:    u.Email,
 		Password: u.Password,
 	}
@@ -102,7 +101,7 @@ func (h *handlerAuth) Login(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	// panggil method new, dan dto LoginRequest akan digunakan sebagai parameter
-	request := new(authdto.LoginRequest)
+	request := new(dto.LoginRequest)
 
 	// err akan decode menjadi data aslinya dan akan di request di body, dan jika ada error maka panggil ErrorResult lalu encode response
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
@@ -160,7 +159,7 @@ func (h *handlerAuth) Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// jika tidak ada error struct LoginResponse akan di isi data request user
-	loginResponse := authdto.LoginResponse{
+	loginResponse := dto.LoginResponse{
 		Name:     user.Name,
 		Email:    user.Email,
 		Password: user.Password,
@@ -179,7 +178,7 @@ func (h *handlerAuth) RegisterAdmin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	// mengambil data user dari request body
-	var request authdto.RegisterRequest
+	var request dto.RegisterRequest
 	json.NewDecoder(r.Body).Decode(&request)
 
 	// memvalidasi inputan dari request body berdasarkan struct dto.CountryRequest
@@ -247,7 +246,7 @@ func (h *handlerAuth) CheckAuth(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	CheckAuthResponse := authdto.CheckAuth{
+	CheckAuthResponse := dto.CheckAuth{
 		Id:    user.Id,
 		Name:  user.Name,
 		Email: user.Email,

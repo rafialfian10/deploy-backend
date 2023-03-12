@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
-	dto "project/dto/result"
+	dto "project/dto"
 	jwtToken "project/pkg/jwt"
 	"strings"
 )

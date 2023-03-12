@@ -1,4 +1,4 @@
-package usersdto
+package dto
 
 type CreateUserRequest struct {
 	Name     string `json:"name" form:"name" validate:"required"`
@@ -17,4 +17,15 @@ type UpdateUserRequest struct {
 	Phone    string `json:"phone" form:"phone"`
 	Address  string `json:"address" form:"address"`
 	Image    string `json:"image" form:"image"`
+}
+
+type UserResponse struct {
+	Id      int    `json:"id"`
+	Name    string `json:"name" form:"name"`
+	Email   string `json:"email" form:"email"`
+	Gender  string `json:"gender" form:"gender"`
+	Phone   string `json:"phone" form:"phone"`
+	Address string `json:"address" form:"address"`
+	Image   string `json:"image" form:"image"`
+	Role    string `json:"role" form:"role"`
 }

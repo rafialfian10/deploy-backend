@@ -49,6 +49,15 @@ func (r *repository) UpdateTrip(trip models.Trip) (models.Trip, error) {
 	err := r.db.Debug().Model(&trip).Updates(trip).Error
 
 	return trip, err
+
+	// db.Session digunakan agar jika bertemu duplikat key, value dari key tersebut akan diupdate sesuai dengan yang terbaru
+	// Model dan Updates digunakan karena tabel Trip memiliki relasi belongsto dengan country
+	// err := r.db.Session(&gorm.Session{FullSaveAssociations: true}).Model(&trip).Updates(trip).Error
+
+	// menghapus gambar yang tidak lagi terpakai
+	// r.db.Exec("DELETE from images where file_name = ?", "unused")
+
+	// return trip, err
 }
 
 // membuat struct method Deletetrip(memanggil struct dengan struct function)

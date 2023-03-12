@@ -3,7 +3,7 @@ package models
 import "time"
 
 type Trip struct {
-	Id             int             `json:"id" gorm:"primary_key:auto_increment"`
+	Id             int             `json:"id"  gorm:"primary_key:auto_increment"`
 	Title          string          `json:"title" form:"title" gorm:"type: varchar(255)"`
 	CountryId      int             `json:"-"`
 	Country        CountryResponse `json:"country"`
@@ -17,6 +17,7 @@ type Trip struct {
 	Quota          int             `json:"quota" form:"quota" gorm:"type: int"`
 	Description    string          `json:"description" form:"description" gorm:"type: varchar(255)"`
 	Image          string          `json:"image" form:"image" gorm:"type: varchar(255)"`
+	// Transactions   TransactionResponse `json:"transactions" gorm:"foreignKey: TripId"`
 }
 
 // relation database (to transaction)

@@ -7,8 +7,7 @@ import (
 	"log"
 	"net/http"
 	"os"
-	dto "project/dto/result"
-	transactionsdto "project/dto/transactions.go"
+	dto "project/dto"
 	"project/models"
 	"project/repositories"
 	"strconv"
@@ -20,16 +19,15 @@ import (
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/gorilla/mux"
 	"github.com/midtrans/midtrans-go"
-	"github.com/midtrans/midtrans-go/coreapi"
 	"github.com/midtrans/midtrans-go/snap"
 )
 
 var path_file_trans = "http://localhost:5000/uploads/"
 
-var c = coreapi.Client{
-	ServerKey: os.Getenv("SERVER_KEY"),
-	ClientKey: os.Getenv("CLIENT_KEY"),
-}
+// var c = coreapi.Client{
+// 	ServerKey: os.Getenv("SERVER_KEY"),
+// 	ClientKey: os.Getenv("CLIENT_KEY"),
+// }
 
 type handlerTransaction struct {
 	TransactionRepository repositories.TransactionRepository
@@ -89,7 +87,7 @@ func (h *handlerTransaction) GetAllTransactionByUser(w http.ResponseWriter, r *h
 func (h *handlerTransaction) GetTransaction(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	id, _ := mux.Vars(r)["id"]
+	id, _ := strconv.Atoi(mux.Vars(r)["id"])
 
 	trans, err := h.TransactionRepository.GetTransaction(id)
 	if err != nil {
@@ -109,19 +107,29 @@ func (h *handlerTransaction) GetTransaction(w http.ResponseWriter, r *http.Reque
 func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// get data user token
+	// if err := r.ParseForm(); err != nil {
+	// 	panic(err.Error())
+	// }
+
+	// mengambil id user dari context yang dikirim oleh middleware
 	userInfo := r.Context().Value("userInfo").(jwt.MapClaims)
 	userId := int(userInfo["id"].(float64))
 
-	if err := r.ParseForm(); err != nil {
-		panic(err.Error())
+	// mengambil data dari request form
+	counterqty, _ := strconv.Atoi(r.FormValue("counter_qty"))
+	total, _ := strconv.Atoi(r.FormValue("total"))
+	tripId, _ := strconv.Atoi(r.FormValue("trip_id"))
+	request := dto.CreateTransactionRequest{
+		CounterQty: counterqty,
+		Total:      total,
+		Status:     r.FormValue("status"),
+		TripId:     tripId,
+		UserId:     userId,
+		// Image:      filename,
 	}
-
-	//mengambil data dari request form
-	var request transactionsdto.CreateTransactionRequest
 	json.NewDecoder(r.Body).Decode(&request)
 
-	// validasi inputan dari request body berdasarkan struct transactionsdto.CreateTransactionRequest
+	// memvalidasi inputan dari request body berdasarkan struct dto.TransactionRequest
 	validation := validator.New()
 	err := validation.Struct(request)
 	if err != nil {
@@ -131,130 +139,92 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// // middleware upload file
-	// dataContex := r.Context().Value("dataFile")
-	// filename := dataContex.(string)
-
-	//parse data
-	// counterQty, _ := strconv.Atoi(r.FormValue("qty"))
-	// total, _ := strconv.Atoi(r.FormValue("total"))
-	// tripId, _ := strconv.Atoi(r.FormValue("trip_id"))
-
-	// request := transactionsdto.CreateTransactionRequest{
-	// 	CounterQty: counterQty,
-	// 	Total:      total,
-	// 	Status:     "new",
-	// 	// Image:      filename,
-	// 	TripId: tripId,
-	// 	UserId: userId,
-	// }
-
-	// buat transaction id unik
-	var transIdIsMatch = false
-	var transactionId string
-
-	// buat transaksi id dengan time unix
-	for !transIdIsMatch {
-		transactionId = fmt.Sprintf("TRX-%d-%d-%d", userId, request.TripId, int(time.Now().UnixNano()))
-		transaction, _ := h.TransactionRepository.GetTransaction(transactionId)
-		if transaction.Id == "" {
-			transIdIsMatch = true
+	// membuat id unik, dan melakukan pengecekan dengan looping
+	var TrxIdMatch = false
+	var TrxId int
+	for !TrxIdMatch {
+		TrxId = request.TripId + int(time.Now().UnixNano())
+		transactionData, _ := h.TransactionRepository.GetTransaction(TrxId)
+		if transactionData.Id == 0 {
+			TrxIdMatch = true
 		}
 	}
 
-	// request ke model transaction
-	transaction := models.Transaction{
-		Id:          transactionId,
+	// membuat object Transaction baru dengan cetakan models.Transaction
+	newTransaction := models.Transaction{
+		Id:          TrxId,
 		CounterQty:  request.CounterQty,
 		Total:       request.Total,
 		Status:      request.Status,
-		BookingDate: timeIn("Asia/Jakarta"),
 		TripId:      request.TripId,
 		UserId:      request.UserId,
-		// Image:      request.Image,
+		BookingDate: timeIn("Asia/Jakarta"),
 	}
 
-	// panggil Transaction repository dan masukkan transaction ke dalam kedalam function CreateTransaction
-	data, err := h.TransactionRepository.CreateTransaction(transaction)
+	// mengirim data Transaction baru ke database
+	transaction, err := h.TransactionRepository.CreateTransaction(newTransaction)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
+		w.WriteHeader(http.StatusBadRequest)
 		response := dto.ErrorResult{Code: http.StatusInternalServerError, Message: err.Error()}
 		json.NewEncoder(w).Encode(response)
 		return
 	}
 
-	// panggil function getTrip agar setelah data di create data id akan keluar response
-	transactionResponse, err := h.TransactionRepository.GetTransaction(data.Id)
+	// mengambil data transaction yang baru ditambahkan
+	TransactionAdded, err := h.TransactionRepository.GetTransaction(transaction.Id)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
-		response := dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()}
+		response := dto.ErrorResult{Code: http.StatusInternalServerError, Message: err.Error()}
 		json.NewEncoder(w).Encode(response)
 		return
 	}
 
-	// snap
 	var s = snap.Client{}
 	s.New(os.Getenv("SERVER_KEY"), midtrans.Sandbox)
 
 	req := &snap.Request{
 		TransactionDetails: midtrans.TransactionDetails{
-			OrderID:  transactionResponse.Id,
-			GrossAmt: int64(transactionResponse.Total),
+			OrderID:  strconv.Itoa(TransactionAdded.Id),
+			GrossAmt: int64(TransactionAdded.Total),
 		},
 		CreditCard: &snap.CreditCardDetails{
 			Secure: true,
 		},
 		CustomerDetail: &midtrans.CustomerDetails{
-			FName: transactionResponse.User.Name,
-			Email: transactionResponse.User.Email,
-			BillAddr: &midtrans.CustomerAddress{
-				FName:   transactionResponse.User.Name,
-				Phone:   transactionResponse.User.Phone,
-				Address: transactionResponse.User.Address,
-				// Postcode: transaction.User.PostCode,
-			},
-			ShipAddr: &midtrans.CustomerAddress{
-				FName:   transactionResponse.User.Name,
-				Phone:   transactionResponse.User.Phone,
-				Address: transactionResponse.User.Address,
-				// Postcode: transaction.User.PostCode,
-			},
+			FName: TransactionAdded.User.Name,
+			Email: TransactionAdded.User.Email,
 		},
 	}
 
 	snapResp, _ := s.CreateTransaction(req)
-	fmt.Println(snapResp)
 
 	// mengupdate token di database
-	transaction, _ = h.TransactionRepository.UpdateTokenTransaction(snapResp.Token, transactionResponse.Id)
+	updateTransaction, _ := h.TransactionRepository.UpdateTokenTransaction(snapResp.Token, TransactionAdded.Id)
 
 	// mengambil data transaction yang baru diupdate
-	transactionUpdated, _ := h.TransactionRepository.GetTransaction(transaction.Id)
+	transactionUpdated, _ := h.TransactionRepository.GetTransaction(updateTransaction.Id)
 
 	// menyiapkan response
 	w.WriteHeader(http.StatusOK)
-	response := dto.SuccessResult{
-		Code: http.StatusOK,
-		Data: convertOneTransactionResponse(transactionUpdated),
-	}
+	response := dto.SuccessResult{Code: http.StatusOK, Data: convertOneTransactionResponse(transactionUpdated)}
+	// Data: convertOneTransactionResponse(transactionUpdated),
 
 	// mengirim response
 	json.NewEncoder(w).Encode(response)
 }
 
 func (h *handlerTransaction) UpdateTransaction(w http.ResponseWriter, r *http.Request) {
-	id, _ := mux.Vars(r)["id_transaction"]
+	id, _ := strconv.Atoi(mux.Vars(r)["id_transaction"])
 
 	// mengambil data transaction yang baru ditambahkan
 	transaction, _ := h.TransactionRepository.GetTransaction(id)
-	transactionId := transaction.Id
 
 	var s = snap.Client{}
-	s.New(os.Getenv("SB-Mid-server-CBYg0a0CWSxQrUrIYbcaHJvM"), midtrans.Sandbox)
+	s.New(os.Getenv("SERVER_KEY"), midtrans.Sandbox)
 
 	req := &snap.Request{
 		TransactionDetails: midtrans.TransactionDetails{
-			OrderID:  transactionId,
+			OrderID:  strconv.Itoa(transaction.Id),
 			GrossAmt: int64(transaction.Total),
 		},
 		CreditCard: &snap.CreditCardDetails{
@@ -278,8 +248,7 @@ func (h *handlerTransaction) UpdateTransaction(w http.ResponseWriter, r *http.Re
 	w.WriteHeader(http.StatusOK)
 	response := dto.SuccessResult{
 		Code: http.StatusOK,
-		Data: convertOneTransactionResponse(transactionUpdated),
-	}
+		Data: convertOneTransactionResponse(transactionUpdated)}
 
 	// mengirim response
 	json.NewEncoder(w).Encode(response)
@@ -356,8 +325,10 @@ func (h *handlerTransaction) Notification(w http.ResponseWriter, r *http.Request
 	fraudStatus := notificationPayload["fraud_status"].(string)
 	orderId := notificationPayload["order_id"].(string)
 
+	orderIdInt, _ := strconv.Atoi(orderId)
+
 	// panggil function get transaction
-	transaction, _ := h.TransactionRepository.GetTransaction(orderId)
+	transaction, _ := h.TransactionRepository.GetTransaction(orderIdInt)
 	fmt.Println(transactionStatus, fraudStatus, orderId, transaction)
 
 	// kondisi transaksi
@@ -412,29 +383,41 @@ func (h *handlerTransaction) DeleteTransaction(w http.ResponseWriter, r *http.Re
 }
 
 // membuat fungsi konversi data yang akan disajikan sebagai response sesuai requirement
-func convertResponseTransaction(u models.Transaction) transactionsdto.TransactionResponse {
-	return transactionsdto.TransactionResponse{
-		Id:         u.Id,
-		CounterQty: u.CounterQty,
-		Total:      u.Total,
-		Status:     u.Status,
-		Token:      u.Token,
+func convertResponseTransaction(t models.Transaction) dto.TransactionResponse {
+	return dto.TransactionResponse{
+		Id:         t.Id,
+		CounterQty: t.CounterQty,
+		Total:      t.Total,
+		Status:     t.Status,
+		Token:      t.Token,
+		Trip: dto.TripResponse{
+			Id:             t.Trip.Id,
+			Title:          t.Trip.Title,
+			Country:        t.Trip.Country,
+			Accomodation:   t.Trip.Accomodation,
+			Transportation: t.Trip.Transportation,
+			Eat:            t.Trip.Eat,
+			Day:            t.Trip.Day,
+			Night:          t.Trip.Night,
+			Price:          t.Trip.Price,
+			Quota:          t.Trip.Quota,
+			Description:    t.Trip.Description,
+		},
+		User: t.User,
 		// Image:      u.Image,
-		Trip: u.Trip,
-		User: u.User,
 	}
 }
 
 // membuat fungsi konversi data yang akan disajikan sebagai response sesuai requirement
-func convertOneTransactionResponse(t models.Transaction) transactionsdto.TransactionResponse {
-	result := transactionsdto.TransactionResponse{
+func convertOneTransactionResponse(t models.Transaction) dto.TransactionResponse {
+	result := dto.TransactionResponse{
 		Id:         t.Id,
 		CounterQty: t.CounterQty,
 		Total:      t.Total,
 		Status:     t.Status,
 		Token:      t.Token,
 		User:       t.User,
-		Trip: models.TripResponse{
+		Trip: dto.TripResponse{
 			Id:             t.Trip.Id,
 			Title:          t.Trip.Title,
 			Country:        t.Trip.Country,
@@ -449,7 +432,7 @@ func convertOneTransactionResponse(t models.Transaction) transactionsdto.Transac
 		},
 	}
 	result.BookingDate = t.BookingDate.Format("Monday, 2 January 2006")
-	result.Trip.DateTrip = t.Trip.DateTrip
+	result.Trip.DateTrip = t.Trip.DateTrip.Format("Monday, 2 January 2006")
 	result.Trip.Image = t.Trip.Image
 	// for _, img := range t.Trip.Image {
 	// 	result.Trip.Images = append(result.Trip.Images, img.FileName)
@@ -459,18 +442,18 @@ func convertOneTransactionResponse(t models.Transaction) transactionsdto.Transac
 }
 
 // membuat fungsi konversi data yang akan disajikan sebagai response sesuai requirement
-func convertMultipleTransactionResponse(t []models.Transaction) []transactionsdto.TransactionResponse {
-	var result []transactionsdto.TransactionResponse
+func convertMultipleTransactionResponse(t []models.Transaction) []dto.TransactionResponse {
+	var result []dto.TransactionResponse
 
 	for _, t := range t {
-		transaction := transactionsdto.TransactionResponse{
+		transaction := dto.TransactionResponse{
 			Id:         t.Id,
 			CounterQty: t.CounterQty,
 			Total:      t.Total,
 			Status:     t.Status,
 			Token:      t.Token,
 			User:       t.User,
-			Trip: models.TripResponse{
+			Trip: dto.TripResponse{
 				Id:             t.Trip.Id,
 				Title:          t.Trip.Title,
 				Country:        t.Trip.Country,
@@ -485,7 +468,8 @@ func convertMultipleTransactionResponse(t []models.Transaction) []transactionsdt
 			},
 		}
 		transaction.BookingDate = t.BookingDate.Format("Monday, 2 January 2006")
-		transaction.Trip.DateTrip = t.Trip.DateTrip
+		transaction.Trip.DateTrip = t.Trip.DateTrip.Format("Monday, 2 January 2006")
+		transaction.Trip.Image = t.Trip.Image
 		// for _, img := range t.Trip.Image {
 		// 	transaction.Trip.Image = append(transaction.Trip.image, img.FileName)
 		// }

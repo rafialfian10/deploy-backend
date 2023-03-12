@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	dto "project/dto/result"
+	dto "project/dto"
 )
 
 // function Upload file untuk upload file

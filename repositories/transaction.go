@@ -9,10 +9,10 @@ import (
 type TransactionRepository interface {
 	FindTransactions() ([]models.Transaction, error)
 	FindTransactionsByUser(UserId int) ([]models.Transaction, error)
-	GetTransaction(Id string) (models.Transaction, error)
+	GetTransaction(Id int) (models.Transaction, error)
 	CreateTransaction(transaction models.Transaction) (models.Transaction, error)
-	UpdateTransaction(status string, Id string) (models.Transaction, error)
-	UpdateTokenTransaction(token string, Id string) (models.Transaction, error)
+	UpdateTransaction(status string, Id int) (models.Transaction, error)
+	UpdateTokenTransaction(token string, Id int) (models.Transaction, error)
 	DeleteTransaction(transaction models.Transaction) (models.Transaction, error)
 }
 
@@ -34,9 +34,9 @@ func (r *repository) FindTransactionsByUser(UserId int) ([]models.Transaction, e
 	return transaction, err
 }
 
-func (r *repository) GetTransaction(Id string) (models.Transaction, error) {
+func (r *repository) GetTransaction(Id int) (models.Transaction, error) {
 	var transaction models.Transaction
-	err := r.db.Preload("Trip").Preload("Trip.Country").Preload("User").First(&transaction, Id).First(&transaction, "id = ?", Id).Error
+	err := r.db.Preload("Trip").Preload("Trip.Country").Preload("User").First(&transaction, Id).Error
 
 	return transaction, err
 }
@@ -47,7 +47,7 @@ func (r *repository) CreateTransaction(transaction models.Transaction) (models.T
 	return transaction, err
 }
 
-func (r *repository) UpdateTransaction(status string, Id string) (models.Transaction, error) {
+func (r *repository) UpdateTransaction(status string, Id int) (models.Transaction, error) {
 	var transaction models.Transaction
 	r.db.Preload("Trip.Country").Preload("Trip").Preload("User").First(&transaction, "id = ?", Id)
 
@@ -75,7 +75,7 @@ func (r *repository) UpdateTransaction(status string, Id string) (models.Transac
 	return transaction, err
 }
 
-func (r *repository) UpdateTokenTransaction(token string, Id string) (models.Transaction, error) {
+func (r *repository) UpdateTokenTransaction(token string, Id int) (models.Transaction, error) {
 	var transaction models.Transaction
 	r.db.Preload("Trip").Preload("Trip.Country").Preload("User").First(&transaction, "id = ?", Id)
 

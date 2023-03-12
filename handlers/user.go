@@ -6,8 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	dto "project/dto/result"
-	usersdto "project/dto/users"
+	dto "project/dto"
 	"project/models"
 	"project/repositories"
 	"strconv"
@@ -178,8 +177,8 @@ func (h *handlerUser) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func convertResponseUser(u models.User) usersdto.UserResponse {
-	return usersdto.UserResponse{
+func convertResponseUser(u models.User) dto.UserResponse {
+	return dto.UserResponse{
 		Id:      u.Id,
 		Name:    u.Name,
 		Email:   u.Email,
