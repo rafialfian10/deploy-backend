@@ -118,14 +118,14 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 	// mengambil data dari request form
 	counterqty, _ := strconv.Atoi(r.FormValue("counter_qty"))
 	total, _ := strconv.Atoi(r.FormValue("total"))
-	status := r.FormValue("status")
+	// status := r.FormValue("status")
 	tripId, _ := strconv.Atoi(r.FormValue("trip_id"))
 	request := dto.CreateTransactionRequest{
 		CounterQty: counterqty,
 		Total:      total,
-		Status:     status,
-		TripId:     tripId,
-		UserId:     userId,
+		// Status:     status,
+		TripId: tripId,
+		UserId: userId,
 		// Image:      filename,
 	}
 
@@ -335,6 +335,7 @@ func (h *handlerTransaction) Notification(w http.ResponseWriter, r *http.Request
 	if transactionStatus == "capture" {
 		if fraudStatus == "challenge" {
 			SendEmail("Transaction Failed", transaction)
+			transaction.Status = "failed"
 			h.TransactionRepository.UpdateTransaction("pending", transaction.Id)
 		} else if fraudStatus == "accept" {
 			SendEmail("Transaction Success", transaction)

@@ -36,7 +36,7 @@ func (r *repository) FindTransactionsByUser(UserId int) ([]models.Transaction, e
 
 func (r *repository) GetTransaction(Id int) (models.Transaction, error) {
 	var transaction models.Transaction
-	err := r.db.Preload("Trip").Preload("Trip.Country").Preload("User").First(&transaction, Id).Error
+	err := r.db.Preload("Trip.Country").Preload("Trip").Preload("User").First(&transaction, "id = ?", Id).Error
 
 	return transaction, err
 }
@@ -50,7 +50,6 @@ func (r *repository) CreateTransaction(transaction models.Transaction) (models.T
 func (r *repository) UpdateTransaction(status string, Id int) (models.Transaction, error) {
 	var transaction models.Transaction
 	r.db.Preload("Trip.Country").Preload("Trip").Preload("User").First(&transaction, "id = ?", Id)
-
 	// If is different & Status is "success" decrement available quota on data trip
 	if status != transaction.Status && status == "success" {
 		var trip models.Trip
@@ -69,7 +68,6 @@ func (r *repository) UpdateTransaction(status string, Id int) (models.Transactio
 
 	// change transaction status
 	transaction.Status = status
-
 	err := r.db.Model(&transaction).Updates(transaction).Error
 
 	return transaction, err
@@ -77,7 +75,7 @@ func (r *repository) UpdateTransaction(status string, Id int) (models.Transactio
 
 func (r *repository) UpdateTokenTransaction(token string, Id int) (models.Transaction, error) {
 	var transaction models.Transaction
-	r.db.Preload("Trip").Preload("Trip.Country").Preload("User").First(&transaction, "id = ?", Id)
+	r.db.Preload("Trip.Country").Preload("Trip").Preload("User").First(&transaction, "id = ?", Id)
 
 	// change transaction token
 	transaction.Token = token
