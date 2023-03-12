@@ -118,15 +118,17 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 	// mengambil data dari request form
 	counterqty, _ := strconv.Atoi(r.FormValue("counter_qty"))
 	total, _ := strconv.Atoi(r.FormValue("total"))
+	status := r.FormValue("status")
 	tripId, _ := strconv.Atoi(r.FormValue("trip_id"))
 	request := dto.CreateTransactionRequest{
 		CounterQty: counterqty,
 		Total:      total,
-		Status:     r.FormValue("status"),
+		Status:     status,
 		TripId:     tripId,
 		UserId:     userId,
 		// Image:      filename,
 	}
+
 	json.NewDecoder(r.Body).Decode(&request)
 
 	// memvalidasi inputan dari request body berdasarkan struct dto.TransactionRequest
@@ -143,7 +145,7 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 	var TrxIdMatch = false
 	var TrxId int
 	for !TrxIdMatch {
-		TrxId = request.TripId + int(time.Now().UnixNano())
+		TrxId = request.UserId + request.TripId + int(time.Now().UnixNano())
 		transactionData, _ := h.TransactionRepository.GetTransaction(TrxId)
 		if transactionData.Id == 0 {
 			TrxIdMatch = true
@@ -157,7 +159,7 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 		Total:       request.Total,
 		Status:      request.Status,
 		TripId:      request.TripId,
-		UserId:      request.UserId,
+		UserId:      userId,
 		BookingDate: timeIn("Asia/Jakarta"),
 	}
 
@@ -207,7 +209,6 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 	// menyiapkan response
 	w.WriteHeader(http.StatusOK)
 	response := dto.SuccessResult{Code: http.StatusOK, Data: convertOneTransactionResponse(transactionUpdated)}
-	// Data: convertOneTransactionResponse(transactionUpdated),
 
 	// mengirim response
 	json.NewEncoder(w).Encode(response)
@@ -323,12 +324,11 @@ func (h *handlerTransaction) Notification(w http.ResponseWriter, r *http.Request
 	// transaksi status
 	transactionStatus := notificationPayload["transaction_status"].(string)
 	fraudStatus := notificationPayload["fraud_status"].(string)
-	orderId := notificationPayload["order_id"].(string)
-
-	orderIdInt, _ := strconv.Atoi(orderId)
+	orderId := notificationPayload["order_id"].(int)
+	// orderIdInt, _ := strconv.Atoi(orderId)
 
 	// panggil function get transaction
-	transaction, _ := h.TransactionRepository.GetTransaction(orderIdInt)
+	transaction, _ := h.TransactionRepository.GetTransaction(orderId)
 	fmt.Println(transactionStatus, fraudStatus, orderId, transaction)
 
 	// kondisi transaksi
@@ -338,19 +338,24 @@ func (h *handlerTransaction) Notification(w http.ResponseWriter, r *http.Request
 			h.TransactionRepository.UpdateTransaction("pending", transaction.Id)
 		} else if fraudStatus == "accept" {
 			SendEmail("Transaction Success", transaction)
+			transaction.Status = "success"
 			h.TransactionRepository.UpdateTransaction("success", transaction.Id)
 		}
 	} else if transactionStatus == "settlement" {
 		SendEmail("Transaction Success", transaction)
+		transaction.Status = "success"
 		h.TransactionRepository.UpdateTransaction("success", transaction.Id)
 	} else if transactionStatus == "deny" {
 		SendEmail("Transaction Failed", transaction)
+		transaction.Status = "failed"
 		h.TransactionRepository.UpdateTransaction("failed", transaction.Id)
 	} else if transactionStatus == "cancel" || transactionStatus == "expire" {
 		SendEmail("Transaction Failed", transaction)
+		transaction.Status = "failed"
 		h.TransactionRepository.UpdateTransaction("failed", transaction.Id)
 	} else if transactionStatus == "pending" {
 		SendEmail("Transaction Pending", transaction)
+		transaction.Status = "pending"
 		h.TransactionRepository.UpdateTransaction("pending", transaction.Id)
 	}
 
