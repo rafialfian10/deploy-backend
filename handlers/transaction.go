@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/rand"
 	"net/http"
 	"os"
 	dto "project/dto"
@@ -158,7 +157,7 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 	var TrxIdMatch = false
 	var TrxId int
 	for !TrxIdMatch {
-		TrxId = userId + request.TripID + rand.Intn(10000) - rand.Intn(100)
+		TrxId = userId + request.TripID + int(time.Now().UnixNano())
 		transactionData, _ := h.TransactionRepository.GetTransaction(TrxId)
 		if transactionData.Id == 0 {
 			TrxIdMatch = true

@@ -7,7 +7,7 @@ type CreateTransactionRequest struct {
 	Total      int    `json:"total" form:"total"`
 	Status     string `json:"status" form:"status"`
 	TripID     int    `json:"tripId" form:"tripId"`
-	// UserId     int    `json:"userId" form:"userId"`
+	UserId     int    `json:"userId" form:"userId"`
 	// Image      string `json:"image" form:"image"`
 }
 
