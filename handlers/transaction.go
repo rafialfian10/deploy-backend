@@ -12,7 +12,6 @@ import (
 	"project/models"
 	"project/repositories"
 	"strconv"
-	"time"
 
 	"gopkg.in/gomail.v2"
 
@@ -538,10 +537,10 @@ func convertMultipleTransactionResponse(t []models.Transaction) []dto.Transactio
 }
 
 // fungsi untuk mendapatkan waktu sesuai zona indonesia
-func timeIn(name string) time.Time {
-	loc, err := time.LoadLocation(name)
-	if err != nil {
-		panic(err)
-	}
-	return time.Now().In(loc)
-}
+// func timeIn(name string) time.Time {
+// 	loc, err := time.LoadLocation(name)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	return time.Now().In(loc)
+// }
