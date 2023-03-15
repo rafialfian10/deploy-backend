@@ -12,6 +12,7 @@ import (
 	"project/models"
 	"project/repositories"
 	"strconv"
+	"time"
 
 	"gopkg.in/gomail.v2"
 
@@ -166,13 +167,13 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 
 	// membuat object Transaction baru dengan cetakan models.Transaction
 	newTransaction := models.Transaction{
-		Id:         TrxId,
-		CounterQty: request.CounterQty,
-		Total:      request.Total,
-		// BookingDate: timeIn("Asia/Jakarta"),
-		Status: "pending",
-		TripID: request.TripID,
-		UserId: userId,
+		Id:          TrxId,
+		CounterQty:  request.CounterQty,
+		Total:       request.Total,
+		BookingDate: time.Now().UTC(),
+		Status:      "pending",
+		TripID:      request.TripID,
+		UserId:      userId,
 	}
 	fmt.Println("data transaction", newTransaction)
 
