@@ -100,10 +100,6 @@ func (h *handlerTransaction) GetTransaction(w http.ResponseWriter, r *http.Reque
 func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// if err := r.ParseForm(); err != nil {
-	// 	panic(err.Error())
-	// }
-
 	// mengambil id user dari context yang dikirim oleh middleware
 	userInfo := r.Context().Value("userInfo").(jwt.MapClaims)
 	userId := int(userInfo["id"].(float64))
@@ -117,10 +113,8 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 		Total:      total,
 		TripID:     tripId,
 		UserId:     userId,
-		// Image:      filename,
 	}
 
-	// var request dto.CreateTransactionRequest
 	json.NewDecoder(r.Body).Decode(&request)
 
 	// memvalidasi inputan dari request body berdasarkan struct dto.TransactionRequest
@@ -137,7 +131,7 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 	var TrxIdMatch = false
 	var TrxId int
 	for !TrxIdMatch {
-		TrxId = userId + request.TripID + int(time.Now().UnixNano())
+		TrxId = int(time.Now().Unix())
 		transactionData, _ := h.TransactionRepository.GetTransaction(TrxId)
 		if transactionData.Id == 0 {
 			TrxIdMatch = true
@@ -207,7 +201,13 @@ func (h *handlerTransaction) UpdateTransaction(w http.ResponseWriter, r *http.Re
 	id, _ := strconv.Atoi(mux.Vars(r)["id"])
 
 	// mengambil data transaction yang baru ditambahkan
-	transaction, _ := h.TransactionRepository.GetTransaction(id)
+	transaction, err := h.TransactionRepository.GetTransaction(id)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		response := dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
 
 	var s = snap.Client{}
 	s.New(os.Getenv("SERVER_KEY"), midtrans.Sandbox)
@@ -429,33 +429,8 @@ func (h *handlerTransaction) DeleteTransaction(w http.ResponseWriter, r *http.Re
 	}
 
 	w.WriteHeader(http.StatusOK)
-	response := dto.SuccessResult{Code: http.StatusOK, Data: convertResponseTransaction(data)}
+	response := dto.SuccessResult{Code: http.StatusOK, Data: convertOneTransactionResponse(data)}
 	json.NewEncoder(w).Encode(response)
-}
-
-// membuat fungsi konversi data yang akan disajikan sebagai response sesuai requirement
-func convertResponseTransaction(t models.Transaction) dto.TransactionResponse {
-	return dto.TransactionResponse{
-		Id:         t.Id,
-		CounterQty: t.CounterQty,
-		Total:      t.Total,
-		Status:     t.Status,
-		Token:      t.Token,
-		User:       t.User,
-		Trip: dto.TripResponse{
-			Id:             t.Trip.Id,
-			Title:          t.Trip.Title,
-			Country:        t.Trip.Country,
-			Accomodation:   t.Trip.Accomodation,
-			Transportation: t.Trip.Transportation,
-			Eat:            t.Trip.Eat,
-			Day:            t.Trip.Day,
-			Night:          t.Trip.Night,
-			Price:          t.Trip.Price,
-			Quota:          t.Trip.Quota,
-			Description:    t.Trip.Description,
-		},
-	}
 }
 
 // membuat fungsi konversi data yang akan disajikan sebagai response sesuai requirement

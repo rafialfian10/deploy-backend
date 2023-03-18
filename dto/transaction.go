@@ -8,7 +8,6 @@ type CreateTransactionRequest struct {
 	Status     string `json:"status" form:"status"`
 	TripID     int    `json:"tripId" form:"tripId"`
 	UserId     int    `json:"userId" form:"userId"`
-	// Image      string `json:"image" form:"image"`
 }
 
 type UpdateTransactionRequest struct {
@@ -24,5 +23,4 @@ type TransactionResponse struct {
 	Token       string              `json:"token"`
 	Trip        TripResponse        `json:"trip" gorm:"foreignKey:TripID"`
 	User        models.UserResponse `json:"user"`
-	// Image      string `json:"image" form:"image"`
 }
