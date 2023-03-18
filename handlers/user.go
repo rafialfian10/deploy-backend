@@ -57,20 +57,17 @@ func (h *handlerUser) GetUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	response := dto.SuccessResult{
-		Code: http.StatusOK,
-		Data: convertResponseUser(user),
-	}
+	response := dto.SuccessResult{Code: http.StatusOK, Data: convertResponseUser(user, r)}
 	json.NewEncoder(w).Encode(response)
-
 }
 
 func (h *handlerUser) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	id, _ := strconv.Atoi(mux.Vars(r)["id"])
+	userInfo := r.Context().Value("userInfo").(jwt.MapClaims)
+	userId := int(userInfo["id"].(float64))
 
-	user, err := h.UserRepository.GetUser(int(id))
+	user, err := h.UserRepository.GetUser(int(userId))
 
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -80,7 +77,7 @@ func (h *handlerUser) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// middleware
-	dataContex := r.Context().Value("dataFile")
+	dataContex := r.Context().Value("userImage")
 	filepath := dataContex.(string)
 
 	// cloudinary
@@ -92,7 +89,7 @@ func (h *handlerUser) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	cld, _ := cloudinary.NewFromParams(CLOUD_NAME, API_KEY, API_SECRET)
 
 	// Upload file to Cloudinary ...
-	resp, err := cld.Upload.Upload(ctx, filepath, uploader.UploadParams{Folder: "waysbook"})
+	resp, err := cld.Upload.Upload(ctx, filepath, uploader.UploadParams{Folder: "dewetour"})
 	fmt.Println(resp.SecureURL)
 
 	if err != nil {
@@ -125,11 +122,9 @@ func (h *handlerUser) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// image
-	if resp.SecureURL != "" {
-		user.Image = resp.SecureURL
-	}
+	user.Image = resp.SecureURL
 
-	newUser, err := h.UserRepository.UpdateUser(user)
+	updateUser, err := h.UserRepository.UpdateUser(user)
 
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -138,7 +133,7 @@ func (h *handlerUser) UpdateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	newUserResponse, err := h.UserRepository.GetUser(newUser.Id)
+	userUpdated, err := h.UserRepository.GetUser(updateUser.Id)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		response := dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()}
@@ -148,7 +143,7 @@ func (h *handlerUser) UpdateUser(w http.ResponseWriter, r *http.Request) {
 
 	// jika tidak ada error maka SuccessResult
 	w.WriteHeader(http.StatusOK)
-	response := dto.SuccessResult{Code: http.StatusOK, Data: convertResponseUser(newUserResponse)}
+	response := dto.SuccessResult{Code: http.StatusOK, Data: convertResponseUser(userUpdated, r)}
 	json.NewEncoder(w).Encode(response)
 }
 
@@ -164,7 +159,7 @@ func (h *handlerUser) DeleteUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data, err := h.UserRepository.DeleteUser(user)
+	userDeleted, err := h.UserRepository.DeleteUser(user)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		response := dto.ErrorResult{Code: http.StatusInternalServerError, Message: err.Error()}
@@ -173,11 +168,11 @@ func (h *handlerUser) DeleteUser(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	response := dto.SuccessResult{Code: http.StatusOK, Data: convertResponseUser(data)}
+	response := dto.SuccessResult{Code: http.StatusOK, Data: convertResponseUser(userDeleted, r)}
 	json.NewEncoder(w).Encode(response)
 }
 
-func convertResponseUser(u models.User) dto.UserResponse {
+func convertResponseUser(u models.User, r *http.Request) dto.UserResponse {
 	return dto.UserResponse{
 		Id:      u.Id,
 		Name:    u.Name,

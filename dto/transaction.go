@@ -22,7 +22,7 @@ type TransactionResponse struct {
 	Status      string              `json:"status"`
 	BookingDate string              `json:"booking_date"`
 	Token       string              `json:"token"`
-	Trip        models.TripResponse `json:"trip" gorm:"foreignKey:TripID"`
+	Trip        TripResponse        `json:"trip" gorm:"foreignKey:TripID"`
 	User        models.UserResponse `json:"user"`
 	// Image      string `json:"image" form:"image"`
 }

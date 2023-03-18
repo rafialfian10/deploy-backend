@@ -270,7 +270,7 @@ func (h *handlerTrip) UpdateTrip(w http.ResponseWriter, r *http.Request) {
 		// menghapus gambar lama jika gambar yang baru yang direquest lebih sedikit
 		for i := range trip.Image {
 			if i >= arrReqImagesLength {
-				trip.Image[i].Name = "unused"
+				trip.Image[i].Name = "deleted"
 			}
 		}
 	}

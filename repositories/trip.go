@@ -53,7 +53,7 @@ func (r *repository) UpdateTrip(trip models.Trip) (models.Trip, error) {
 	err := r.db.Session(&gorm.Session{FullSaveAssociations: true}).Model(&trip).Updates(trip).Error
 
 	// menghapus gambar yang tidak lagi terpakai
-	r.db.Exec("DELETE from images where name = ?", "unused")
+	r.db.Exec("DELETE from images where file_name = ?", "deleted")
 
 	return trip, err
 }
@@ -61,7 +61,7 @@ func (r *repository) UpdateTrip(trip models.Trip) (models.Trip, error) {
 // membuat struct method Deletetrip(memanggil struct dengan struct function)
 func (r *repository) DeleteTrip(trip models.Trip) (models.Trip, error) {
 	// err := r.db.Debug().Preload("Country").Delete(&trip).Error
-	err := r.db.Select("Image").Delete(&trip).Error
+	err := r.db.Debug().Preload("Country").Select("Image").Delete(&trip).Error
 
 	return trip, err
 }

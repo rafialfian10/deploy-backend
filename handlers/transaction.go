@@ -442,7 +442,7 @@ func convertResponseTransaction(t models.Transaction) dto.TransactionResponse {
 		Status:     t.Status,
 		Token:      t.Token,
 		User:       t.User,
-		Trip: models.TripResponse{
+		Trip: dto.TripResponse{
 			Id:             t.Trip.Id,
 			Title:          t.Trip.Title,
 			Country:        t.Trip.Country,
@@ -467,7 +467,7 @@ func convertOneTransactionResponse(t models.Transaction) dto.TransactionResponse
 		Status:     t.Status,
 		Token:      t.Token,
 		User:       t.User,
-		Trip: models.TripResponse{
+		Trip: dto.TripResponse{
 			Id:             t.Trip.Id,
 			Title:          t.Trip.Title,
 			Country:        t.Trip.Country,
@@ -482,11 +482,11 @@ func convertOneTransactionResponse(t models.Transaction) dto.TransactionResponse
 		},
 	}
 	result.BookingDate = t.BookingDate.Format("Monday, 2 January 2006")
-	result.Trip.DateTrip = t.Trip.DateTrip
-	result.Trip.Image = t.Trip.Image
-	// for _, img := range t.Trip.Image {
-	// 	result.Trip.Images = append(result.Trip.Images, img.FileName)
-	// }
+	result.Trip.DateTrip = t.Trip.DateTrip.Format("Monday, 2 January 2006")
+
+	for _, img := range t.Trip.Image {
+		result.Trip.Images = append(result.Trip.Images, img.Name)
+	}
 
 	return result
 }
@@ -495,36 +495,38 @@ func convertOneTransactionResponse(t models.Transaction) dto.TransactionResponse
 func convertMultipleTransactionResponse(t []models.Transaction) []dto.TransactionResponse {
 	var result []dto.TransactionResponse
 
-	for _, t := range t {
+	for _, trans := range t {
 		transaction := dto.TransactionResponse{
-			Id:         t.Id,
-			CounterQty: t.CounterQty,
-			Total:      t.Total,
-			Status:     t.Status,
-			Token:      t.Token,
-			User:       t.User,
-			Trip: models.TripResponse{
-				Id:             t.Trip.Id,
-				Title:          t.Trip.Title,
-				Country:        t.Trip.Country,
-				Accomodation:   t.Trip.Accomodation,
-				Transportation: t.Trip.Transportation,
-				Eat:            t.Trip.Eat,
-				Day:            t.Trip.Day,
-				Night:          t.Trip.Night,
-				Price:          t.Trip.Price,
-				Quota:          t.Trip.Quota,
-				Description:    t.Trip.Description,
+			Id:         trans.Id,
+			CounterQty: trans.CounterQty,
+			Total:      trans.Total,
+			Status:     trans.Status,
+			Token:      trans.Token,
+			User:       trans.User,
+			Trip: dto.TripResponse{
+				Id:             trans.Trip.Id,
+				Title:          trans.Trip.Title,
+				Country:        trans.Trip.Country,
+				Accomodation:   trans.Trip.Accomodation,
+				Transportation: trans.Trip.Transportation,
+				Eat:            trans.Trip.Eat,
+				Day:            trans.Trip.Day,
+				Night:          trans.Trip.Night,
+				Price:          trans.Trip.Price,
+				Quota:          trans.Trip.Quota,
+				Description:    trans.Trip.Description,
 			},
 		}
-		transaction.BookingDate = t.BookingDate.Format("Monday, 2 January 2006")
-		transaction.Trip.DateTrip = t.Trip.DateTrip
-		transaction.Trip.Image = t.Trip.Image
-		// for _, img := range t.Trip.Image {
-		// 	transaction.Trip.Image = append(transaction.Trip.image, img.FileName)
-		// }
+		transaction.BookingDate = trans.BookingDate.Format("Monday, 2 January 2006")
+		transaction.Trip.DateTrip = trans.Trip.DateTrip.Format("Monday, 2 January 2006")
+
+		for _, img := range trans.Trip.Image {
+			transaction.Trip.Images = append(transaction.Trip.Images, img.Name)
+		}
+
 		result = append(result, transaction)
 	}
+
 	return result
 }
 

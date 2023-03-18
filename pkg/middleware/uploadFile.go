@@ -4,98 +4,72 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
 	"project/dto"
-	"strconv"
-	"time"
 
 	"github.com/cloudinary/cloudinary-go/v2"
 	"github.com/cloudinary/cloudinary-go/v2/api/uploader"
-	"github.com/golang-jwt/jwt/v4"
 )
 
-// membuat middleware untuk menghandle upload file
+// Middleware untuk handle upload file user
 func UpdateUserImage(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Handling dan parsing data dari form data yang ada data file nya. Argumen 1024 pada method tersebut adalah maxMemory
-		if err := r.ParseMultipartForm(1024); err != nil {
-			panic(err.Error())
-		}
 
-		// mengambil id user dari url
-		// id := mux.Vars(r)["id_user"]
-		claims := r.Context().Value("userInfo").(jwt.MapClaims)
-		id := strconv.Itoa(int(claims["id"].(float64)))
+		file, _, err := r.FormFile("image")
 
-		// mengambil file dari form
-		uploadedFile, handler, err := r.FormFile("images")
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			response := dto.ErrorResult{
-				Code:    http.StatusBadRequest,
-				Message: "Please upload a JPG, JPEG or PNG image",
-			}
-			json.NewEncoder(w).Encode(response)
+		if err != nil && r.Method == "PATCH" {
+			ctx := context.WithValue(r.Context(), "userImage", "false")
+			next.ServeHTTP(w, r.WithContext(ctx))
 			return
 		}
-		defer uploadedFile.Close()
 
-		// cek isi handler
-		// fmt.Println("uploadedFile", uploadedFile)
+		if err != nil {
+			fmt.Println(err)
+			json.NewEncoder(w).Encode("Error Retrieving the File")
+			return
+		}
+		defer file.Close()
 
-		// Apabila format file bukan .jpg, .jpeg atau .png, maka tampilkan error
-		if filepath.Ext(handler.Filename) != ".jpg" && filepath.Ext(handler.Filename) != ".jpeg" && filepath.Ext(handler.Filename) != ".png" {
+		const MAX_UPLOAD_SIZE = 10 << 20 // masksimal file upload 10mb
+
+		// var MAX_UPLOAD_SIZE akan diparse
+		r.ParseMultipartForm(MAX_UPLOAD_SIZE)
+
+		// if contentLength lebih besar dari file yang diupload maka panggil ErrorResult
+		if r.ContentLength > MAX_UPLOAD_SIZE {
 			w.WriteHeader(http.StatusBadRequest)
-			response := dto.ErrorResult{
-				Code:    http.StatusBadRequest,
-				Message: "The provided file format is not allowed. Please upload a JPG, JPEG or PNG image",
-			}
+			response := dto.ErrorResult{Code: http.StatusBadRequest, Message: "Max size in 1mb"}
 			json.NewEncoder(w).Encode(response)
 			return
 		}
 
-		// cek isi handler
-		// fmt.Println("handler", handler)
-		// fmt.Println("handler.Filename", handler.Filename)
-
-		// mengambil direktori aktif
-		dir, err := os.Getwd()
+		// jika ukuran file sudah dibawah maksimal upload file maka file masuk ke folder upload
+		tempFile, err := ioutil.TempFile("uploads", "image-*.png")
 		if err != nil {
-			panic(err.Error())
+			fmt.Println(err)
+			fmt.Println("path upload error")
+			json.NewEncoder(w).Encode(err)
+			return
 		}
+		defer tempFile.Close()
 
-		// menyusun string untuk digunakan sebagai nama file gambar
-		random := strconv.FormatInt(time.Now().UnixNano(), 10)
-		filenameStr := id + "-" + random
-
-		// memberi nama pada file gambar
-		filename := fmt.Sprintf("%s%s", filenameStr, filepath.Ext(handler.Filename))
-		// fmt.Println(filename)
-
-		// menentukan lokasi file
-		fileLocation := filepath.Join(dir, "uploads/img", filename)
-		// fmt.Println(fileLocation)
-
-		// membuat file baru yang menjadi tempat untuk menampung hasil salinan file upload
-		targetFile, err := os.OpenFile(fileLocation, os.O_WRONLY|os.O_CREATE, 0666)
+		// baca semua isi file yang kita upload, jika ada error maka tampilkan err
+		fileBytes, err := ioutil.ReadAll(file)
 		if err != nil {
-			panic(err.Error())
-		}
-		defer targetFile.Close()
-
-		// Menyalin file hasil upload, ke file baru yang menjadi target
-		if _, err := io.Copy(targetFile, uploadedFile); err != nil {
-			panic(err.Error())
+			fmt.Println(err)
 		}
 
-		// membuat sebuah context baru dengan menyisipkan value di dalamnya, valuenya adalah filepath (loaksi file) dari file yang diupload
-		// ctx := context.WithValue(r.Context(), UploadFileID, filepath)
-		ctx := context.WithValue(r.Context(), "userImage", fileLocation)
+		// write this byte array to our temporary file
+		tempFile.Write(fileBytes)
 
-		// mengirim nilai context ke object http.HandlerFunc yang menjadi parameter saat fungsi middleware ini dipanggil
+		data := tempFile.Name()
+		// filepath := data[8:] // split uploads(huruf paling 8 depan akan diambil)
+
+		// filename akan ditambahkan kedalam variable ctx. dan r.Context akan di panggil jika ingin upload file
+		ctx := context.WithValue(r.Context(), "userImage", data)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
