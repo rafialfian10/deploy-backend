@@ -59,7 +59,7 @@ func (r *repository) UpdateTransaction(status string, Id int) (models.Transactio
 		r.db.Model(&trip).Updates(trip)
 	}
 
-	// jika status dan transaksi status berbeda & Status adalah "reject" maka quota trip akan tetap
+	// jika status dan transaksi status berbeda & Status adalah "reject" maka quota trip akan di tambahkan kembali
 	if status != transaction.Status && status == "reject" {
 		var trip models.Trip
 		r.db.First(&trip, transaction.TripID)

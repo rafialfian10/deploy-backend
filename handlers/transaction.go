@@ -22,8 +22,6 @@ import (
 	"github.com/midtrans/midtrans-go/snap"
 )
 
-var path_file_trans = "http://localhost:5000/uploads/"
-
 // var c = coreapi.Client{
 // 	ServerKey: os.Getenv("SERVER_KEY"),
 // 	ClientKey: os.Getenv("CLIENT_KEY"),
@@ -47,10 +45,6 @@ func (h *handlerTransaction) FindTransactions(w http.ResponseWriter, r *http.Req
 		json.NewEncoder(w).Encode(err.Error())
 	}
 
-	for i, p := range transaction {
-		transaction[i].Image = path_file_trans + p.Image
-	}
-
 	// menyiapkan response
 	w.WriteHeader(http.StatusOK)
 	response := dto.SuccessResult{Code: http.StatusOK, Data: convertMultipleTransactionResponse(transaction)}
@@ -70,20 +64,14 @@ func (h *handlerTransaction) GetAllTransactionByUser(w http.ResponseWriter, r *h
 	transaction, err := h.TransactionRepository.FindTransactionsByUser(id)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
-		response := dto.ErrorResult{
-			Code:    http.StatusInternalServerError,
-			Message: err.Error(),
-		}
+		response := dto.ErrorResult{Code: http.StatusInternalServerError, Message: err.Error()}
 		json.NewEncoder(w).Encode(response)
 		return
 	}
 
 	// menyiapkan response
 	w.WriteHeader(http.StatusOK)
-	response := dto.SuccessResult{
-		Code: http.StatusOK,
-		Data: convertMultipleTransactionResponse(transaction),
-	}
+	response := dto.SuccessResult{Code: http.StatusOK, Data: convertMultipleTransactionResponse(transaction)}
 
 	// mengirim response
 	json.NewEncoder(w).Encode(response)
@@ -95,7 +83,7 @@ func (h *handlerTransaction) GetTransaction(w http.ResponseWriter, r *http.Reque
 
 	id, _ := strconv.Atoi(mux.Vars(r)["id"])
 
-	trans, err := h.TransactionRepository.GetTransaction(id)
+	transaction, err := h.TransactionRepository.GetTransaction(id)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		response := dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()}
@@ -103,10 +91,8 @@ func (h *handlerTransaction) GetTransaction(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	trans.Image = path_file_trans + trans.Image
-
 	w.WriteHeader(http.StatusOK)
-	response := dto.SuccessResult{Code: http.StatusOK, Data: trans}
+	response := dto.SuccessResult{Code: http.StatusOK, Data: convertOneTransactionResponse(transaction)}
 	json.NewEncoder(w).Encode(response)
 }
 
@@ -123,7 +109,6 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 	userId := int(userInfo["id"].(float64))
 
 	// mengambil data dari request form
-	// var request dto.CreateTransactionRequest
 	counterqty, _ := strconv.Atoi(r.FormValue("counter_qty"))
 	total, _ := strconv.Atoi(r.FormValue("total"))
 	tripId, _ := strconv.Atoi(r.FormValue("tripId"))
@@ -131,17 +116,12 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 		CounterQty: counterqty,
 		Total:      total,
 		TripID:     tripId,
-		// UserId:     userId,
+		UserId:     userId,
 		// Image:      filename,
 	}
 
+	// var request dto.CreateTransactionRequest
 	json.NewDecoder(r.Body).Decode(&request)
-	// if err != nil {
-	// 	w.WriteHeader(http.StatusBadRequest)
-	// 	response := dto.ErrorResult{Code: http.StatusBadRequest, Message: err.Error()}
-	// 	json.NewEncoder(w).Encode(response)
-	// 	return
-	// }
 
 	// memvalidasi inputan dari request body berdasarkan struct dto.TransactionRequest
 	validation := validator.New()
@@ -172,7 +152,7 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 		BookingDate: time.Now().UTC(),
 		Status:      "pending",
 		TripID:      request.TripID,
-		UserId:      userId,
+		UserId:      request.UserId,
 	}
 	fmt.Println("data transaction", newTransaction)
 
@@ -206,17 +186,17 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 	}
 
 	snapResp, _ := s.CreateTransaction(req)
-	fmt.Println(snapResp)
+	// fmt.Println(snapResp)
 
 	// mengupdate token di database
-	// updateTransaction, _ := h.TransactionRepository.UpdateTokenTransaction(snapResp.Token, TransactionAdded.Id)
+	updateTransaction, _ := h.TransactionRepository.UpdateTokenTransaction(snapResp.Token, TransactionAdded.Id)
 
 	// mengambil data transaction yang baru diupdate
-	// transactionUpdated, _ := h.TransactionRepository.GetDetailTransaction(updateTransaction.Id)
+	transactionUpdated, _ := h.TransactionRepository.GetTransaction(updateTransaction.Id)
 
 	// menyiapkan response
 	w.WriteHeader(http.StatusOK)
-	response := dto.SuccessResult{Code: http.StatusOK, Data: snapResp}
+	response := dto.SuccessResult{Code: http.StatusOK, Data: convertOneTransactionResponse(transactionUpdated)}
 
 	// mengirim response
 	json.NewEncoder(w).Encode(response)
@@ -224,7 +204,7 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 
 // function update transaction
 func (h *handlerTransaction) UpdateTransaction(w http.ResponseWriter, r *http.Request) {
-	id, _ := strconv.Atoi(mux.Vars(r)["id_transaction"])
+	id, _ := strconv.Atoi(mux.Vars(r)["id"])
 
 	// mengambil data transaction yang baru ditambahkan
 	transaction, _ := h.TransactionRepository.GetTransaction(id)
@@ -268,14 +248,16 @@ func (h *handlerTransaction) UpdateTransactionByAdmin(w http.ResponseWriter, r *
 
 	id, _ := strconv.Atoi(mux.Vars(r)["id"])
 
-	if err := r.ParseForm(); err != nil {
-		panic(err.Error())
+	status := r.FormValue("status")
+	request := dto.UpdateTransactionRequest{
+		Status: status,
 	}
 
 	// mengambil data dari request form
-	var request dto.CreateTransactionRequest
+	// var request dto.UpdateTransactionRequest
 	json.NewDecoder(r.Body).Decode(&request)
-	// fmt.Println(request.Status)
+	fmt.Println("status", request.Status)
+	fmt.Println("ID before", id)
 
 	// mengambil data yang ingin diupdate berdasarkan id yang didapatkan dari url
 	_, err := h.TransactionRepository.GetTransaction(id)
@@ -286,8 +268,11 @@ func (h *handlerTransaction) UpdateTransactionByAdmin(w http.ResponseWriter, r *
 		return
 	}
 
+	fmt.Println("ID after", id)
+
 	// mengirim data transaction yang sudah diupdate ke database
 	transactionUpdated, err := h.TransactionRepository.UpdateTransaction(request.Status, id)
+	fmt.Println("Transaction Updated", transactionUpdated)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		response := dto.ErrorResult{Code: http.StatusInternalServerError, Message: err.Error()}
@@ -296,13 +281,16 @@ func (h *handlerTransaction) UpdateTransactionByAdmin(w http.ResponseWriter, r *
 	}
 
 	// mengambil detail transaction yang baru saja ditambahkan (perlu diambil ulang, karena hasil dari transactionAdded hanya ada country_id saja, tanpa ada detail country nya)
-	getTransactionUpdated, _ := h.TransactionRepository.GetTransaction(transactionUpdated.Id)
+	getTransactionUpdated, err := h.TransactionRepository.GetTransaction(transactionUpdated.Id)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		response := dto.ErrorResult{Code: http.StatusInternalServerError, Message: err.Error()}
+		json.NewEncoder(w).Encode(response)
+		return
+	}
 
 	// menyiapkan response
-	response := dto.SuccessResult{
-		Code: http.StatusOK,
-		Data: convertOneTransactionResponse(getTransactionUpdated),
-	}
+	response := dto.SuccessResult{Code: http.StatusOK, Data: convertOneTransactionResponse(getTransactionUpdated)}
 
 	// mengirim response
 	json.NewEncoder(w).Encode(response)
@@ -382,7 +370,11 @@ func (h *handlerTransaction) Notification(w http.ResponseWriter, r *http.Request
 	order_id, _ := strconv.Atoi(orderId)
 
 	// panggil function get transaction
-	transaction, _ := h.TransactionRepository.GetTransaction(order_id)
+	transaction, err := h.TransactionRepository.GetTransaction(order_id)
+	if err != nil {
+		fmt.Println("Transaction not found")
+		return
+	}
 	fmt.Println(transactionStatus, fraudStatus, orderId, transaction)
 
 	// kondisi transaksi

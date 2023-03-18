@@ -11,8 +11,9 @@ func RunMigration() {
 	// koneksi database akan melakukan auto migrasi struct/models ke dalam database mysql
 	err := mysql.DB.AutoMigrate( // panggil mysql lalu DB(pkg/mysql) lalu panggil function AutoMigrate()
 		&models.User{},
-		&models.Trip{},
 		&models.Country{},
+		&models.Image{},
+		&models.Trip{},
 		&models.Transaction{},
 	)
 	// jika ada error maka panggil panic

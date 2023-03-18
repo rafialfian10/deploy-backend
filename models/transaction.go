@@ -9,7 +9,6 @@ type Transaction struct {
 	BookingDate time.Time    `json:"booking_date"`
 	Status      string       `json:"status" form:"status" gorm:"type: varchar(255)"`
 	Token       string       `json:"token" gorm:"type: varchar(255)"`
-	Image       string       `json:"image" form:"image" gorm:"type: varchar(255)"`
 	TripID      int          `json:"tripId"`
 	Trip        TripResponse `json:"trip" gorm:"constraint:OnUpdate:CASCADE,OnDelete:CASCADE;"`
 	UserId      int          `json:"userId"`
