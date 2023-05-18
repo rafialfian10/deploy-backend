@@ -115,6 +115,8 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 		UserId:     userId,
 	}
 
+	fmt.Println("request data", request)
+
 	json.NewDecoder(r.Body).Decode(&request)
 
 	// memvalidasi inputan dari request body berdasarkan struct dto.TransactionRequest
@@ -433,7 +435,7 @@ func (h *handlerTransaction) DeleteTransaction(w http.ResponseWriter, r *http.Re
 	json.NewEncoder(w).Encode(response)
 }
 
-// membuat fungsi konversi data yang akan disajikan sebagai response sesuai requirement
+// function konversi data yang akan disajikan sebagai response sesuai requirement
 func convertOneTransactionResponse(t models.Transaction) dto.TransactionResponse {
 	result := dto.TransactionResponse{
 		Id:         t.Id,

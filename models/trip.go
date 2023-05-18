@@ -15,7 +15,7 @@ type Trip struct {
 	DateTrip       time.Time       `json:"datetrip"`
 	Price          int             `json:"price" form:"price" gorm:"type: int"`
 	Quota          int             `json:"quota" form:"quota" gorm:"type: int"`
-	Description    string          `json:"description" form:"description" gorm:"type: varchar(255)"`
+	Description    string          `json:"description" form:"description" gorm:"type: text"`
 	Image          []ImageResponse `json:"images" gorm:"foreignKey:TripID"`
 	// Transaction    []TransactionResponse `json:"transactions" gorm:"foreignKey: TripID"`
 }
