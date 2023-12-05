@@ -16,7 +16,7 @@ func RunMigration() {
 		&models.Trip{},
 		&models.Transaction{},
 	)
-	// jika ada error maka panggil panic
+
 	if err != nil {
 		fmt.Println(err)
 		panic("Migration failed")

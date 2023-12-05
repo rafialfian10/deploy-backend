@@ -35,7 +35,6 @@ func HandlerTransaction(TransactionRepository repositories.TransactionRepository
 	return &handlerTransaction{TransactionRepository}
 }
 
-// function get all transaction
 func (h *handlerTransaction) FindTransactions(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -45,22 +44,18 @@ func (h *handlerTransaction) FindTransactions(w http.ResponseWriter, r *http.Req
 		json.NewEncoder(w).Encode(err.Error())
 	}
 
-	// menyiapkan response
 	w.WriteHeader(http.StatusOK)
 	response := dto.SuccessResult{Code: http.StatusOK, Data: convertMultipleTransactionResponse(transaction)}
 
-	// mengirim response
 	json.NewEncoder(w).Encode(response)
 }
 
-// function get all transaction by user
 func (h *handlerTransaction) GetAllTransactionByUser(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	claims := r.Context().Value("userInfo").(jwt.MapClaims)
 	id := int(claims["id"].(float64))
 
-	// mengambil seluruh data transaction
 	transaction, err := h.TransactionRepository.FindTransactionsByUser(id)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -69,15 +64,12 @@ func (h *handlerTransaction) GetAllTransactionByUser(w http.ResponseWriter, r *h
 		return
 	}
 
-	// menyiapkan response
 	w.WriteHeader(http.StatusOK)
 	response := dto.SuccessResult{Code: http.StatusOK, Data: convertMultipleTransactionResponse(transaction)}
 
-	// mengirim response
 	json.NewEncoder(w).Encode(response)
 }
 
-// function get detail transaction
 func (h *handlerTransaction) GetTransaction(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -96,15 +88,11 @@ func (h *handlerTransaction) GetTransaction(w http.ResponseWriter, r *http.Reque
 	json.NewEncoder(w).Encode(response)
 }
 
-// function create transaction
 func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
-	// mengambil id user dari context yang dikirim oleh middleware
 	userInfo := r.Context().Value("userInfo").(jwt.MapClaims)
 	userId := int(userInfo["id"].(float64))
-
-	// mengambil data dari request form
 	counterqty, _ := strconv.Atoi(r.FormValue("counter_qty"))
 	total, _ := strconv.Atoi(r.FormValue("total"))
 	tripId, _ := strconv.Atoi(r.FormValue("tripId"))
@@ -115,11 +103,8 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 		UserId:     userId,
 	}
 
-	fmt.Println("request data", request)
-
 	json.NewDecoder(r.Body).Decode(&request)
 
-	// memvalidasi inputan dari request body berdasarkan struct dto.TransactionRequest
 	validation := validator.New()
 	err := validation.Struct(request)
 	if err != nil {
@@ -129,7 +114,6 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// membuat id uniq, dan melakukan pengecekan dengan looping
 	var TrxIdMatch = false
 	var TrxId int
 	for !TrxIdMatch {
@@ -140,7 +124,6 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 		}
 	}
 
-	// membuat object Transaction baru dengan cetakan models.Transaction
 	newTransaction := models.Transaction{
 		Id:          TrxId,
 		CounterQty:  request.CounterQty,
@@ -150,9 +133,7 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 		TripID:      request.TripID,
 		UserId:      request.UserId,
 	}
-	fmt.Println("data transaction", newTransaction)
 
-	// mengirim data Transaction baru ke database
 	transaction, err := h.TransactionRepository.CreateTransaction(newTransaction)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -161,7 +142,6 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// mengambil data transaction yang baru ditambahkan
 	TransactionAdded, _ := h.TransactionRepository.GetTransaction(transaction.Id)
 
 	var s = snap.Client{}
@@ -182,27 +162,18 @@ func (h *handlerTransaction) CreateTransaction(w http.ResponseWriter, r *http.Re
 	}
 
 	snapResp, _ := s.CreateTransaction(req)
-	// fmt.Println(snapResp)
-
-	// mengupdate token di database
 	updateTransaction, _ := h.TransactionRepository.UpdateTokenTransaction(snapResp.Token, TransactionAdded.Id)
-
-	// mengambil data transaction yang baru diupdate
 	transactionUpdated, _ := h.TransactionRepository.GetTransaction(updateTransaction.Id)
 
-	// menyiapkan response
 	w.WriteHeader(http.StatusOK)
 	response := dto.SuccessResult{Code: http.StatusOK, Data: convertOneTransactionResponse(transactionUpdated)}
 
-	// mengirim response
 	json.NewEncoder(w).Encode(response)
 }
 
-// function update transaction
 func (h *handlerTransaction) UpdateTransaction(w http.ResponseWriter, r *http.Request) {
 	id, _ := strconv.Atoi(mux.Vars(r)["id"])
 
-	// mengambil data transaction yang baru ditambahkan
 	transaction, err := h.TransactionRepository.GetTransaction(id)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -229,22 +200,15 @@ func (h *handlerTransaction) UpdateTransaction(w http.ResponseWriter, r *http.Re
 	}
 
 	snapResp, _ := s.CreateTransaction(req)
-
-	// mengupdate token di database
 	transaction, _ = h.TransactionRepository.UpdateTokenTransaction(snapResp.Token, id)
-
-	// mengambil data transaction yang baru diupdate
 	transactionUpdated, _ := h.TransactionRepository.GetTransaction(id)
 
-	// menyiapkan response
 	w.WriteHeader(http.StatusOK)
 	response := dto.SuccessResult{Code: http.StatusOK, Data: convertOneTransactionResponse(transactionUpdated)}
 
-	// mengirim response
 	json.NewEncoder(w).Encode(response)
 }
 
-// function update transaction by admin
 func (h *handlerTransaction) UpdateTransactionByAdmin(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -255,11 +219,9 @@ func (h *handlerTransaction) UpdateTransactionByAdmin(w http.ResponseWriter, r *
 		Status: status,
 	}
 
-	// mengambil data dari request form
-	// var request dto.UpdateTransactionRequest
 	json.NewDecoder(r.Body).Decode(&request)
-	fmt.Println("status", request.Status)
-	fmt.Println("ID before", id)
+
+	// fmt.Println("ID before", id)
 
 	// mengambil data yang ingin diupdate berdasarkan id yang didapatkan dari url
 	_, err := h.TransactionRepository.GetTransaction(id)
@@ -270,11 +232,11 @@ func (h *handlerTransaction) UpdateTransactionByAdmin(w http.ResponseWriter, r *
 		return
 	}
 
-	fmt.Println("ID after", id)
+	// fmt.Println("ID after", id)
 
 	// mengirim data transaction yang sudah diupdate ke database
 	transactionUpdated, err := h.TransactionRepository.UpdateTransaction(request.Status, id)
-	fmt.Println("Transaction Updated", transactionUpdated)
+	// fmt.Println("Transaction Updated", transactionUpdated)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		response := dto.ErrorResult{Code: http.StatusInternalServerError, Message: err.Error()}
@@ -298,7 +260,6 @@ func (h *handlerTransaction) UpdateTransactionByAdmin(w http.ResponseWriter, r *
 	json.NewEncoder(w).Encode(response)
 }
 
-// function send email
 func SendEmail(status string, transaction models.Transaction) {
 	var CONFIG_SMTP_HOST = "smtp.gmail.com"
 	var CONFIG_SMTP_PORT = 587
@@ -306,7 +267,7 @@ func SendEmail(status string, transaction models.Transaction) {
 	var CONFIG_AUTH_EMAIL = os.Getenv("SYSTEM_EMAIL")
 	var CONFIG_AUTH_PASSWORD = os.Getenv("SYSTEM_PASSWORD")
 
-	var tripName = transaction.User.Name
+	var tripName = transaction.Trip.Title
 	var price = strconv.Itoa(transaction.Total)
 
 	mailer := gomail.NewMessage()
@@ -352,9 +313,7 @@ func SendEmail(status string, transaction models.Transaction) {
 	}
 }
 
-// function notification (mengixinkan mitrans untuk mengupdate status transaksi)
 func (h *handlerTransaction) Notification(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Notification received")
 	var notificationPayload map[string]interface{}
 
 	err := json.NewDecoder(r.Body).Decode(&notificationPayload)
@@ -365,21 +324,18 @@ func (h *handlerTransaction) Notification(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// transaksi status
 	transactionStatus := notificationPayload["transaction_status"].(string)
 	fraudStatus := notificationPayload["fraud_status"].(string)
 	orderId := notificationPayload["order_id"].(string)
 	order_id, _ := strconv.Atoi(orderId)
 
-	// panggil function get transaction
 	transaction, err := h.TransactionRepository.GetTransaction(order_id)
 	if err != nil {
 		fmt.Println("Transaction not found")
 		return
 	}
-	fmt.Println(transactionStatus, fraudStatus, orderId, transaction)
+	// fmt.Println(transactionStatus, fraudStatus, orderId, transaction)
 
-	// kondisi transaksi
 	if transactionStatus == "capture" {
 		if fraudStatus == "challenge" {
 			h.TransactionRepository.UpdateTransaction("pending", transaction.Id)
@@ -409,7 +365,6 @@ func (h *handlerTransaction) Notification(w http.ResponseWriter, r *http.Request
 	w.WriteHeader(http.StatusOK)
 }
 
-// function delete transaction
 func (h *handlerTransaction) DeleteTransaction(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
@@ -435,7 +390,6 @@ func (h *handlerTransaction) DeleteTransaction(w http.ResponseWriter, r *http.Re
 	json.NewEncoder(w).Encode(response)
 }
 
-// function konversi data yang akan disajikan sebagai response sesuai requirement
 func convertOneTransactionResponse(t models.Transaction) dto.TransactionResponse {
 	result := dto.TransactionResponse{
 		Id:         t.Id,
@@ -468,7 +422,6 @@ func convertOneTransactionResponse(t models.Transaction) dto.TransactionResponse
 	return result
 }
 
-// membuat fungsi konversi data yang akan disajikan sebagai response sesuai requirement
 func convertMultipleTransactionResponse(t []models.Transaction) []dto.TransactionResponse {
 	var result []dto.TransactionResponse
 
